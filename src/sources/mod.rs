@@ -6,12 +6,9 @@ pub enum Config {
 }
 
 impl Config {
-    pub fn build(self) -> (Source, tokio::sync::mpsc::Receiver<crate::event::Event>) {
+    pub fn build(self, sender: crate::prelude::Sender) -> Source {
         match self {
-            Self::RandomLogs(inner) => {
-                let (source, rx) = inner.build();
-                (Source::RandomLogs(source), rx)
-            }
+            Self::RandomLogs(inner) => Source::RandomLogs(inner.build(sender)),
         }
     }
 }

@@ -2,22 +2,19 @@
 pub struct Config {}
 
 pub struct Sink {
-    reader: tokio::sync::mpsc::Receiver<crate::event::Event>,
+    receiver: crate::prelude::Receiver,
 }
 
 impl Config {
-    pub fn build(self, reader: tokio::sync::mpsc::Receiver<crate::event::Event>) -> Sink {
-        Sink { reader }
+    pub fn build(self) -> (Sink, crate::prelude::Sender) {
+        let (sender, receiver) = crate::prelude::create_channel(1000);
+        (Sink { receiver }, sender)
     }
 }
 
 impl Sink {
-    pub fn new(_config: Config, reader: tokio::sync::mpsc::Receiver<crate::event::Event>) -> Self {
-        Self { reader }
-    }
-
     async fn execute(mut self) {
-        while let Some(input) = self.reader.recv().await {
+        while let Some(input) = self.receiver.recv().await {
             println!("{input:?}");
         }
     }

@@ -1,57 +1,58 @@
 use std::collections::HashMap;
 
 #[derive(Debug)]
-struct ConfigWithTarget {
-    inner: crate::sources::Config,
-    target: String,
+struct ConfigWithInputs {
+    inner: crate::sinks::Config,
+    inputs: Vec<String>,
 }
 
 #[derive(Debug, Default)]
 pub struct Config {
-    sources: HashMap<String, ConfigWithTarget>,
-    sinks: HashMap<String, crate::sinks::Config>,
+    sources: HashMap<String, crate::sources::Config>,
+    sinks: HashMap<String, ConfigWithInputs>,
 }
 
 impl Config {
-    pub fn with_source(
-        mut self,
-        name: impl Into<String>,
-        target: impl Into<String>,
-        source: crate::sources::Config,
-    ) -> Self {
-        self.sources.insert(
-            name.into(),
-            ConfigWithTarget {
-                target: target.into(),
-                inner: source,
-            },
-        );
+    pub fn with_source(mut self, name: impl Into<String>, source: crate::sources::Config) -> Self {
+        self.sources.insert(name.into(), source);
         self
     }
 
-    pub fn with_sink(mut self, name: impl Into<String>, sink: crate::sinks::Config) -> Self {
-        self.sinks.insert(name.into(), sink);
+    pub fn with_sink<I: Into<String>>(
+        mut self,
+        name: impl Into<String>,
+        inputs: impl IntoIterator<Item = I>,
+        sink: crate::sinks::Config,
+    ) -> Self {
+        self.sinks.insert(
+            name.into(),
+            ConfigWithInputs {
+                inner: sink,
+                inputs: inputs.into_iter().map(Into::into).collect(),
+            },
+        );
         self
     }
 
     pub fn build(self) -> Topology {
         let mut sources = HashMap::with_capacity(self.sources.len());
         let mut targets = HashMap::with_capacity(self.sources.len());
-
-        for (name, ConfigWithTarget { inner, target }) in self.sources.into_iter() {
-            let (source, rx) = inner.build();
-            sources.insert(name.clone(), source);
-            targets.insert(target, rx);
-        }
-
         let mut sinks = HashMap::with_capacity(self.sinks.len());
 
-        for (name, inner) in self.sinks.into_iter() {
-            if let Some(rx) = targets.remove(&name) {
-                let sink = inner.build(rx);
-                sinks.insert(name, sink);
+        for (name, ConfigWithInputs { inner, inputs }) in self.sinks.into_iter() {
+            let (sink, sender) = inner.build();
+            for input in inputs {
+                targets.insert(input, sender.clone());
+            }
+            sinks.insert(name, sink);
+        }
+
+        for (name, inner) in self.sources.into_iter() {
+            if let Some(target) = targets.remove(&name) {
+                let source = inner.build(target);
+                sources.insert(name, source);
             } else {
-                println!("no reader found for sink {name:?}, ignoring...");
+                eprintln!("no target found for source {name:?}, ignoring");
             }
         }
 

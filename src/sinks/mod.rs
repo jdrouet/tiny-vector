@@ -6,9 +6,12 @@ pub enum Config {
 }
 
 impl Config {
-    pub fn build(self, reader: tokio::sync::mpsc::Receiver<crate::event::Event>) -> Sink {
+    pub fn build(self) -> (Sink, crate::prelude::Sender) {
         match self {
-            Self::Console(inner) => Sink::Console(inner.build(reader)),
+            Self::Console(inner) => {
+                let (inner, tx) = inner.build();
+                (Sink::Console(inner), tx)
+            }
         }
     }
 }
