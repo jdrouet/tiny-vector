@@ -2,15 +2,18 @@
 #[serde(rename_all = "snake_case")]
 pub struct Config {}
 
-pub struct Sink {
-    receiver: crate::prelude::Receiver,
-}
+#[derive(Debug)]
+pub struct BuildError;
 
 impl Config {
-    pub fn build(self) -> (Sink, crate::prelude::Sender) {
+    pub fn build(self) -> Result<(Sink, crate::prelude::Sender), BuildError> {
         let (sender, receiver) = crate::prelude::create_channel(1000);
-        (Sink { receiver }, sender)
+        Ok((Sink { receiver }, sender))
     }
+}
+
+pub struct Sink {
+    receiver: crate::prelude::Receiver,
 }
 
 impl Sink {

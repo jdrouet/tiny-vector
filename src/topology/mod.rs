@@ -1,4 +1,24 @@
+use std::io::{Error, ErrorKind, Result as IOResult};
 use std::{collections::HashMap, path::Path};
+
+#[derive(Debug)]
+pub enum BuildError {
+    Source(crate::sources::BuildError),
+    Sink(crate::sinks::BuildError),
+    TargetNotFound(String),
+}
+
+impl From<crate::sources::BuildError> for BuildError {
+    fn from(value: crate::sources::BuildError) -> Self {
+        Self::Source(value)
+    }
+}
+
+impl From<crate::sinks::BuildError> for BuildError {
+    fn from(value: crate::sinks::BuildError) -> Self {
+        Self::Sink(value)
+    }
+}
 
 #[derive(Debug, serde::Deserialize)]
 struct ConfigWithInputs {
@@ -14,18 +34,18 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Self {
-        let file = std::fs::read_to_string(path).expect("unable to open configuration file");
-        toml::de::from_str(&file).expect("unable to parse configuration file")
+    pub fn from_path<P: AsRef<Path>>(path: P) -> IOResult<Self> {
+        let file = std::fs::read_to_string(path)?;
+        toml::de::from_str(&file).map_err(|error| Error::new(ErrorKind::InvalidData, error))
     }
 
-    pub fn build(self) -> Topology {
+    pub fn build(self) -> Result<Topology, BuildError> {
         let mut sources = HashMap::with_capacity(self.sources.len());
         let mut targets = HashMap::with_capacity(self.sources.len());
         let mut sinks = HashMap::with_capacity(self.sinks.len());
 
         for (name, ConfigWithInputs { inner, inputs }) in self.sinks.into_iter() {
-            let (sink, sender) = inner.build();
+            let (sink, sender) = inner.build()?;
             for input in inputs {
                 targets.insert(input, sender.clone());
             }
@@ -34,14 +54,14 @@ impl Config {
 
         for (name, inner) in self.sources.into_iter() {
             if let Some(target) = targets.remove(&name) {
-                let source = inner.build(target);
+                let source = inner.build(target)?;
                 sources.insert(name, source);
             } else {
-                eprintln!("no target found for source {name:?}, ignoring");
+                return Err(BuildError::TargetNotFound(name));
             }
         }
 
-        Topology { sources, sinks }
+        Ok(Topology { sources, sinks })
     }
 }
 

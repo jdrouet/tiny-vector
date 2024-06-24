@@ -6,7 +6,7 @@ mod topology;
 
 #[tokio::main]
 async fn main() {
-    let config = crate::topology::Config::from_path("./example.toml");
-    let topo = config.build();
+    let config = crate::topology::Config::from_path("./example.toml").unwrap();
+    let topo = config.build().unwrap();
     topo.run().wait().await;
 }

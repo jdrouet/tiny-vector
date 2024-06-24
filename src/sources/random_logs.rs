@@ -1,3 +1,6 @@
+#[derive(Debug)]
+pub struct BuildError;
+
 #[derive(Clone, Debug, Default, serde::Deserialize)]
 pub struct Config {
     /// Interval between emitting events, in ms
@@ -12,11 +15,11 @@ fn generate() -> crate::event::Event {
 }
 
 impl Config {
-    pub fn build(self, sender: crate::prelude::Sender) -> Source {
-        Source {
+    pub fn build(self, sender: crate::prelude::Sender) -> Result<Source, BuildError> {
+        Ok(Source {
             duration: tokio::time::Duration::from_millis(self.interval.unwrap_or(1000)),
             sender,
-        }
+        })
     }
 }
 
