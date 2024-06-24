@@ -1,8 +1,14 @@
-#[derive(Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Config {}
 
 pub struct Sink {
     reader: tokio::sync::mpsc::Receiver<crate::event::Event>,
+}
+
+impl Config {
+    pub fn build(self, reader: tokio::sync::mpsc::Receiver<crate::event::Event>) -> Sink {
+        Sink { reader }
+    }
 }
 
 impl Sink {

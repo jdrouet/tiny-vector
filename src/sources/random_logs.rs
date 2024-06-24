@@ -1,4 +1,4 @@
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Config {
     /// Interval between emitting events, in ms
     pub interval: Option<u64>,
@@ -6,6 +6,20 @@ pub struct Config {
 
 fn generate() -> crate::event::Event {
     crate::event::EventLog::new("Hello World!").into()
+}
+
+impl Config {
+    pub fn build(self) -> (Source, tokio::sync::mpsc::Receiver<crate::event::Event>) {
+        let (tx, rx) = tokio::sync::mpsc::channel::<crate::event::Event>(100);
+
+        (
+            Source {
+                duration: tokio::time::Duration::from_millis(self.interval.unwrap_or(1000)),
+                output: tx,
+            },
+            rx,
+        )
+    }
 }
 
 pub struct Source {
