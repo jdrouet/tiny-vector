@@ -47,10 +47,10 @@ pub enum Sink {
 }
 
 impl Sink {
-    pub fn run(self) -> tokio::task::JoinHandle<()> {
+    pub fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
         match self {
-            Self::Console(inner) => inner.run(),
-            Self::DatadogLogs(inner) => inner.run(),
+            Self::Console(inner) => inner.run(name),
+            Self::DatadogLogs(inner) => inner.run(name),
         }
     }
 }

@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use reqwest::StatusCode;
+use tracing::instrument::WithSubscriber;
 
 use crate::prelude::StringOrEnv;
 
@@ -31,6 +32,7 @@ impl DatadogClient {
         &self,
         event_logs: impl Iterator<Item = crate::event::EventLog>,
     ) -> Result<(), ExecutionError> {
+        tracing::debug!("sending logs to datadog logs");
         let events = event_logs.collect::<Vec<_>>();
         match self
             .inner
@@ -43,7 +45,7 @@ impl DatadogClient {
                 Err(ExecutionError::InvalidPayload)
             }
             Ok(res) => {
-                println!("events sent with status code: {:?}", res.status());
+                tracing::debug!("events sent with status code: {:?}", res.status());
                 Ok(())
             }
             Err(err) => Err(ExecutionError::RequestError(err)),
@@ -99,13 +101,14 @@ pub struct Sink {
 
 impl Sink {
     async fn execute(mut self) {
+        tracing::info!("starting datadog_logs sink execution");
         let mut buffer = Vec::with_capacity(20);
         loop {
             let size = self.receiver.recv_many(&mut buffer, 20).await;
             if size == 0 {
                 break;
             }
-            println!("received {size} events");
+            tracing::debug!("received {size} events");
             if let Err(error) = self
                 .client
                 .send_many(buffer.drain(..).filter_map(|item| item.into_event_log()))
@@ -114,9 +117,14 @@ impl Sink {
                 eprintln!("{error:?}");
             }
         }
+        tracing::info!("finishing datadog_logs sink execution");
     }
 
-    pub fn run(self) -> tokio::task::JoinHandle<()> {
-        tokio::spawn(async move { self.execute().await })
+    pub fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
+        let span = tracing::info_span!("component", name, kind = "sink", flavor = "datadog_logs");
+        tokio::spawn(async move {
+            let _entered = span.enter();
+            self.execute().await
+        })
     }
 }

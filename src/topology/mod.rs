@@ -76,10 +76,12 @@ impl Topology {
         let mut sinks = HashMap::with_capacity(self.sinks.len());
 
         for (name, sink) in self.sinks.into_iter() {
-            sinks.insert(name, sink.run());
+            let handler = sink.run(name.as_str());
+            sinks.insert(name, handler);
         }
         for (name, source) in self.sources.into_iter() {
-            sources.insert(name, source.run());
+            let handler = source.run(name.as_str());
+            sources.insert(name, handler);
         }
 
         Instance { sources, sinks }

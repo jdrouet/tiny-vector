@@ -30,16 +30,24 @@ pub struct Source {
 
 impl Source {
     pub async fn execute(self) {
+        tracing::info!("starting random_logs source execution");
         let mut timer = tokio::time::interval(self.duration);
         loop {
             let _ = timer.tick().await;
-            if let Err(_) = self.sender.try_send(generate()) {
-                eprintln!("unable to send generated log");
+            tracing::debug!("generating new random log");
+            if let Err(err) = self.sender.try_send(generate()) {
+                tracing::error!("unable to send generated log: {err:?}");
+                break;
             }
         }
+        tracing::info!("stopping random_logs source execution");
     }
 
-    pub fn run(self) -> tokio::task::JoinHandle<()> {
-        tokio::spawn(async move { self.execute().await })
+    pub fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
+        let span = tracing::info_span!("component", name, kind = "source", flavor = "random_logs");
+        tokio::spawn(async move {
+            let _entered = span.enter();
+            self.execute().await
+        })
     }
 }

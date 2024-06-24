@@ -30,9 +30,9 @@ pub enum Source {
 }
 
 impl Source {
-    pub fn run(self) -> tokio::task::JoinHandle<()> {
+    pub fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
         match self {
-            Self::RandomLogs(inner) => inner.run(),
+            Self::RandomLogs(inner) => inner.run(name),
         }
     }
 }
