@@ -1,6 +1,7 @@
 pub mod random_logs;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "snake_case", tag = "type")]
 pub enum Config {
     RandomLogs(self::random_logs::Config),
 }

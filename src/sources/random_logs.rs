@@ -1,4 +1,4 @@
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Deserialize)]
 pub struct Config {
     /// Interval between emitting events, in ms
     pub interval: Option<u64>,

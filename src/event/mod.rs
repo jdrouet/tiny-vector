@@ -15,7 +15,6 @@ impl Event {
     pub fn into_event_log(self) -> Option<EventLog> {
         match self {
             Self::Log(inner) => Some(inner),
-            _ => None,
         }
     }
 }

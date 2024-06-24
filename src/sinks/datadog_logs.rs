@@ -1,5 +1,7 @@
 use reqwest::StatusCode;
 
+use crate::prelude::StringOrEnv;
+
 struct DatadogClient {
     inner: reqwest::Client,
     url: String,
@@ -18,25 +20,15 @@ impl DatadogClient {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct Config {
-    base_url: Option<String>,
-    api_token: Option<String>,
+    url: Option<String>,
+    api_token: StringOrEnv,
 }
 
 impl Config {
-    pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
-        self.base_url = Some(base_url.into());
-        self
-    }
-
-    pub fn with_api_token(mut self, api_token: impl Into<String>) -> Self {
-        self.api_token = Some(api_token.into());
-        self
-    }
-
     fn api_token_header(&self) -> reqwest::header::HeaderValue {
-        match self.api_token {
+        match self.api_token.as_string() {
             Some(ref value) => reqwest::header::HeaderValue::from_str(value)
                 .expect("unable to turn api token into header"),
             _ => panic!("api token not found"),
@@ -65,7 +57,7 @@ impl Config {
 
         let client = DatadogClient {
             inner,
-            url: self.base_url.unwrap_or_else(|| {
+            url: self.url.unwrap_or_else(|| {
                 String::from("https://http-intake.logs.datadoghq.com/api/v2/logs")
             }),
         };

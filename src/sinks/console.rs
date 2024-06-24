@@ -1,4 +1,5 @@
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct Config {}
 
 pub struct Sink {

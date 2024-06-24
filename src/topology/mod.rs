@@ -1,37 +1,22 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
-#[derive(Debug)]
+#[derive(Debug, serde::Deserialize)]
 struct ConfigWithInputs {
+    #[serde(flatten)]
     inner: crate::sinks::Config,
     inputs: Vec<String>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, serde::Deserialize)]
 pub struct Config {
     sources: HashMap<String, crate::sources::Config>,
     sinks: HashMap<String, ConfigWithInputs>,
 }
 
 impl Config {
-    pub fn with_source(mut self, name: impl Into<String>, source: crate::sources::Config) -> Self {
-        self.sources.insert(name.into(), source);
-        self
-    }
-
-    pub fn with_sink<I: Into<String>>(
-        mut self,
-        name: impl Into<String>,
-        inputs: impl IntoIterator<Item = I>,
-        sink: crate::sinks::Config,
-    ) -> Self {
-        self.sinks.insert(
-            name.into(),
-            ConfigWithInputs {
-                inner: sink,
-                inputs: inputs.into_iter().map(Into::into).collect(),
-            },
-        );
-        self
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Self {
+        let file = std::fs::read_to_string(path).expect("unable to open configuration file");
+        toml::de::from_str(&file).expect("unable to parse configuration file")
     }
 
     pub fn build(self) -> Topology {
