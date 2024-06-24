@@ -12,9 +12,13 @@ async fn main() {
             crate::sources::Config::RandomLogs(Default::default()),
         )
         .with_sink(
-            "console",
+            "output",
             ["demo-logs"],
-            crate::sinks::Config::Console(Default::default()),
+            crate::sinks::Config::DatadogLog(
+                crate::sinks::datadog_log::Config::default()
+                    .with_base_url("https://http-intake.logs.datadoghq.eu/api/v2/logs")
+                    .with_api_token(""),
+            ),
         )
         .build();
     topo.run().wait().await;

@@ -5,7 +5,10 @@ pub struct Config {
 }
 
 fn generate() -> crate::event::Event {
-    crate::event::EventLog::new("Hello World!").into()
+    crate::event::EventLog::new("Hello World!")
+        .with_attribute("hostname", "fake-server")
+        .with_attribute("ddsource", "tiny-vector")
+        .into()
 }
 
 impl Config {
