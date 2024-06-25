@@ -101,7 +101,7 @@ pub struct Sink {
 
 impl Sink {
     async fn execute(mut self) {
-        tracing::info!("starting datadog_logs sink execution");
+        tracing::info!("starting");
         let mut buffer = Vec::with_capacity(20);
         loop {
             let size = self.receiver.recv_many(&mut buffer, 20).await;
@@ -117,10 +117,10 @@ impl Sink {
                 eprintln!("{error:?}");
             }
         }
-        tracing::info!("finishing datadog_logs sink execution");
+        tracing::info!("stopping");
     }
 
-    pub fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
+    pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
         let span = tracing::info_span!("component", name, kind = "sink", flavor = "datadog_logs");
         tokio::spawn(async move {
             let _entered = span.enter();

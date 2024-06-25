@@ -1,6 +1,7 @@
 use indexmap::IndexMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "snake_case", tag = "type", content = "content")]
 pub enum Event {
     Log(EventLog),
 }
@@ -19,7 +20,7 @@ impl Event {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct EventLog {
     #[serde(flatten)]
     attributes: IndexMap<String, String>,

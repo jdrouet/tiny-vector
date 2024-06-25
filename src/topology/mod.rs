@@ -71,16 +71,16 @@ pub struct Topology {
 }
 
 impl Topology {
-    pub fn run(self) -> Instance {
+    pub async fn run(self) -> Instance {
         let mut sources = HashMap::with_capacity(self.sources.len());
         let mut sinks = HashMap::with_capacity(self.sinks.len());
 
         for (name, sink) in self.sinks.into_iter() {
-            let handler = sink.run(name.as_str());
+            let handler = sink.run(name.as_str()).await;
             sinks.insert(name, handler);
         }
         for (name, source) in self.sources.into_iter() {
-            let handler = source.run(name.as_str());
+            let handler = source.run(name.as_str()).await;
             sources.insert(name, handler);
         }
 

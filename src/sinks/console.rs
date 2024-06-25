@@ -18,14 +18,14 @@ pub struct Sink {
 
 impl Sink {
     async fn execute(mut self) {
-        tracing::info!("start console sink execution");
+        tracing::info!("starting");
         while let Some(input) = self.receiver.recv().await {
             println!("{input:?}");
         }
-        tracing::info!("finishing console sink execution");
+        tracing::info!("stopping");
     }
 
-    pub fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
+    pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
         let span = tracing::info_span!("component", name, kind = "sink", flavor = "console");
         tokio::spawn(async move {
             let _entered = span.enter();

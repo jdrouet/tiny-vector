@@ -30,7 +30,7 @@ pub struct Source {
 
 impl Source {
     pub async fn execute(self) {
-        tracing::info!("starting random_logs source execution");
+        tracing::info!("starting");
         let mut timer = tokio::time::interval(self.duration);
         loop {
             let _ = timer.tick().await;
@@ -40,10 +40,10 @@ impl Source {
                 break;
             }
         }
-        tracing::info!("stopping random_logs source execution");
+        tracing::info!("stopping");
     }
 
-    pub fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
+    pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
         let span = tracing::info_span!("component", name, kind = "source", flavor = "random_logs");
         tokio::spawn(async move {
             let _entered = span.enter();
