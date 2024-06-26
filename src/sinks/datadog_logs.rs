@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 use reqwest::StatusCode;
-use tracing::instrument::WithSubscriber;
 
 use crate::prelude::StringOrEnv;
 
@@ -9,17 +8,22 @@ const APPLICATION_JSON: reqwest::header::HeaderValue =
     reqwest::header::HeaderValue::from_static("application/json");
 const USER_AGENT: &str = concat!(env!("CARGO_CRATE_NAME"), " ", env!("CARGO_PKG_VERSION"));
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum BuildError {
+    #[error("api token not provided")]
     ApiTokenNotFound,
-    ApiTokenInvalidFormat(reqwest::header::InvalidHeaderValue),
-    UnableToBuildReqwestClient(reqwest::Error),
+    #[error("api token format is invalid")]
+    ApiTokenInvalidFormat(#[source] reqwest::header::InvalidHeaderValue),
+    #[error("unable to build client")]
+    UnableToBuildReqwestClient(#[source] reqwest::Error),
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum ExecutionError {
+    #[error("invalid payload")]
     InvalidPayload,
-    RequestError(reqwest::Error),
+    #[error("request failed")]
+    RequestError(#[source] reqwest::Error),
 }
 
 struct DatadogClient {

@@ -2,8 +2,14 @@
 #[serde(rename_all = "snake_case")]
 pub struct Config {}
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub struct BuildError;
+
+impl std::fmt::Display for BuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "unable to build component")
+    }
+}
 
 impl Config {
     pub fn build(self) -> Result<(Sink, crate::prelude::Sender), BuildError> {

@@ -1,22 +1,12 @@
 pub mod console;
 pub mod datadog_logs;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum BuildError {
-    Console(console::BuildError),
-    DatadogLogs(datadog_logs::BuildError),
-}
-
-impl From<console::BuildError> for BuildError {
-    fn from(value: console::BuildError) -> Self {
-        Self::Console(value)
-    }
-}
-
-impl From<datadog_logs::BuildError> for BuildError {
-    fn from(value: datadog_logs::BuildError) -> Self {
-        Self::DatadogLogs(value)
-    }
+    #[error(transparent)]
+    Console(#[from] console::BuildError),
+    #[error(transparent)]
+    DatadogLogs(#[from] datadog_logs::BuildError),
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]

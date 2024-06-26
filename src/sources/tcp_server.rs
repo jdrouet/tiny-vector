@@ -5,9 +5,10 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum BuildError {
-    InvalidAddress(std::net::AddrParseError),
+    #[error("unable to parse address")]
+    InvalidAddress(#[source] std::net::AddrParseError),
 }
 
 #[derive(Clone, Debug, Default, serde::Deserialize)]
@@ -50,7 +51,7 @@ async fn handle_connection(
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 continue;
             }
-            Err(err) => return Err(err.into()),
+            Err(err) => return Err(err),
         }
     }
     Ok(())

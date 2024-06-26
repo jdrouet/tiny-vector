@@ -1,22 +1,12 @@
 pub mod random_logs;
 pub mod tcp_server;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum BuildError {
-    RandomLogs(random_logs::BuildError),
-    TcpServer(tcp_server::BuildError),
-}
-
-impl From<random_logs::BuildError> for BuildError {
-    fn from(value: random_logs::BuildError) -> Self {
-        Self::RandomLogs(value)
-    }
-}
-
-impl From<tcp_server::BuildError> for BuildError {
-    fn from(value: tcp_server::BuildError) -> Self {
-        Self::TcpServer(value)
-    }
+    #[error(transparent)]
+    RandomLogs(#[from] random_logs::BuildError),
+    #[error(transparent)]
+    TcpServer(#[from] tcp_server::BuildError),
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]

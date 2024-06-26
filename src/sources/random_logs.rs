@@ -1,5 +1,11 @@
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub struct BuildError;
+
+impl std::fmt::Display for BuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "unable to build component")
+    }
+}
 
 #[derive(Clone, Debug, Default, serde::Deserialize)]
 pub struct Config {

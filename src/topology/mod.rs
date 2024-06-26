@@ -1,23 +1,14 @@
 use std::io::{Error, ErrorKind, Result as IOResult};
 use std::{collections::HashMap, path::Path};
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum BuildError {
-    Source(crate::sources::BuildError),
-    Sink(crate::sinks::BuildError),
+    #[error(transparent)]
+    Source(#[from] crate::sources::BuildError),
+    #[error(transparent)]
+    Sink(#[from] crate::sinks::BuildError),
+    #[error("unable to find target {0}")]
     TargetNotFound(String),
-}
-
-impl From<crate::sources::BuildError> for BuildError {
-    fn from(value: crate::sources::BuildError) -> Self {
-        Self::Source(value)
-    }
-}
-
-impl From<crate::sinks::BuildError> for BuildError {
-    fn from(value: crate::sinks::BuildError) -> Self {
-        Self::Sink(value)
-    }
 }
 
 #[derive(Debug, serde::Deserialize)]
