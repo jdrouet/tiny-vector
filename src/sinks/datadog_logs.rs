@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use reqwest::StatusCode;
+use tracing::Instrument;
 
 use crate::prelude::StringOrEnv;
 
@@ -126,9 +127,6 @@ impl Sink {
 
     pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
         let span = tracing::info_span!("component", name, kind = "sink", flavor = "datadog_logs");
-        tokio::spawn(async move {
-            let _entered = span.enter();
-            self.execute().await
-        })
+        tokio::spawn(async move { self.execute().instrument(span).await })
     }
 }

@@ -4,6 +4,7 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader},
     net::{TcpListener, TcpStream},
 };
+use tracing::Instrument;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
@@ -94,10 +95,7 @@ impl Source {
         let listener = TcpListener::bind(self.address).await.unwrap();
 
         let span = tracing::info_span!("component", name, kind = "source", flavor = "tcp_server");
-        tokio::spawn(async move {
-            let _ = span.enter();
-            self.execute(listener).await
-        })
+        tokio::spawn(async move { self.execute(listener).instrument(span).await })
     }
 }
 

@@ -1,3 +1,5 @@
+use tracing::Instrument;
+
 #[derive(Clone, Debug, Default, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct Config {}
@@ -33,9 +35,6 @@ impl Sink {
 
     pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
         let span = tracing::info_span!("component", name, kind = "sink", flavor = "console");
-        tokio::spawn(async move {
-            let _entered = span.enter();
-            self.execute().await
-        })
+        tokio::spawn(async move { self.execute().instrument(span).await })
     }
 }

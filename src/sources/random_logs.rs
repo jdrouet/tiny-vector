@@ -1,3 +1,5 @@
+use tracing::Instrument;
+
 #[derive(Debug, thiserror::Error)]
 pub struct BuildError;
 
@@ -51,9 +53,6 @@ impl Source {
 
     pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
         let span = tracing::info_span!("component", name, kind = "source", flavor = "random_logs");
-        tokio::spawn(async move {
-            let _entered = span.enter();
-            self.execute().await
-        })
+        tokio::spawn(async move { self.execute().instrument(span).await })
     }
 }
