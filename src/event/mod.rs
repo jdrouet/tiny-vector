@@ -1,9 +1,12 @@
+use std::borrow::Cow;
+
 use indexmap::IndexMap;
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "snake_case", tag = "type", content = "content")]
 pub enum Event {
     Log(EventLog),
+    Metric(EventMetric),
 }
 
 impl From<EventLog> for Event {
@@ -12,10 +15,24 @@ impl From<EventLog> for Event {
     }
 }
 
+impl From<EventMetric> for Event {
+    fn from(value: EventMetric) -> Self {
+        Self::Metric(value)
+    }
+}
+
 impl Event {
     pub fn into_event_log(self) -> Option<EventLog> {
         match self {
             Self::Log(inner) => Some(inner),
+            _ => None,
+        }
+    }
+
+    pub fn into_event_metric(self) -> Option<EventMetric> {
+        match self {
+            Self::Metric(inner) => Some(inner),
+            _ => None,
         }
     }
 }
@@ -23,7 +40,7 @@ impl Event {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct EventLog {
     #[serde(flatten)]
-    attributes: IndexMap<String, String>,
+    attributes: IndexMap<Cow<'static, str>, Cow<'static, str>>,
     message: String,
 }
 
@@ -35,8 +52,44 @@ impl EventLog {
         }
     }
 
-    pub fn with_attribute<K: Into<String>, V: Into<String>>(mut self, name: K, value: V) -> Self {
+    pub fn with_attribute<K: Into<Cow<'static, str>>, V: Into<Cow<'static, str>>>(
+        mut self,
+        name: K,
+        value: V,
+    ) -> Self {
         self.attributes.insert(name.into(), value.into());
+        self
+    }
+}
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+pub struct EventMetric {
+    namespace: Cow<'static, str>,
+    name: Cow<'static, str>,
+    tags: IndexMap<Cow<'static, str>, Cow<'static, str>>,
+    value: f64,
+}
+
+impl EventMetric {
+    pub fn new<N: Into<Cow<'static, str>>, M: Into<Cow<'static, str>>>(
+        namespace: N,
+        name: M,
+        value: f64,
+    ) -> Self {
+        Self {
+            namespace: namespace.into(),
+            name: name.into(),
+            tags: IndexMap::new(),
+            value,
+        }
+    }
+
+    pub fn with_tag<K: Into<Cow<'static, str>>, V: Into<Cow<'static, str>>>(
+        mut self,
+        name: K,
+        value: V,
+    ) -> Self {
+        self.tags.insert(name.into(), value.into());
         self
     }
 }
