@@ -12,6 +12,7 @@ sink-datadog-logs = ["dep:reqwest"]
 tokio = { version = "1.38.0", features = [
     "io-util",
     "macros",
+    "net",
     "rt-multi-thread",
     "sync",
     "time",
