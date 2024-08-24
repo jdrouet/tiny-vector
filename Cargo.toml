@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["source-sysinfo", "sink-datadog-logs"]
+default = ["sink-datadog-logs", "source-sysinfo", "source-tcp-server"]
 source-sysinfo = ["dep:sysinfo"]
+source-tcp-server = ["tokio/net"]
 sink-datadog-logs = ["dep:reqwest"]
 
 [dependencies]
 tokio = { version = "1.38.0", features = [
     "io-util",
     "macros",
-    "net",
     "rt-multi-thread",
     "sync",
     "time",
