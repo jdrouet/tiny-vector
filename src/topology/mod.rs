@@ -1,5 +1,6 @@
+use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result as IOResult};
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {

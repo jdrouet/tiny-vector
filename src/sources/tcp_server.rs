@@ -1,9 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
-use tokio::{
-    io::{AsyncBufReadExt, BufReader},
-    net::{TcpListener, TcpStream},
-};
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::net::{TcpListener, TcpStream};
 use tracing::Instrument;
 
 #[derive(Debug, thiserror::Error)]
@@ -101,12 +99,11 @@ impl Source {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        net::{IpAddr, Ipv4Addr, SocketAddr},
-        time::Duration,
-    };
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use std::time::Duration;
 
-    use tokio::{io::AsyncWriteExt, net::TcpStream};
+    use tokio::io::AsyncWriteExt;
+    use tokio::net::TcpStream;
 
     async fn wait_for(rx: &crate::prelude::Receiver) {
         for _ in 0..100 {
