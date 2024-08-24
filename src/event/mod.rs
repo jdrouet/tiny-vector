@@ -40,8 +40,8 @@ impl Event {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct EventLog {
     #[serde(flatten)]
-    attributes: IndexMap<Cow<'static, str>, Cow<'static, str>>,
-    message: String,
+    pub attributes: IndexMap<Cow<'static, str>, Cow<'static, str>>,
+    pub message: String,
 }
 
 impl EventLog {
@@ -64,10 +64,10 @@ impl EventLog {
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct EventMetric {
-    namespace: Cow<'static, str>,
-    name: Cow<'static, str>,
-    tags: IndexMap<Cow<'static, str>, Cow<'static, str>>,
-    value: f64,
+    pub namespace: Cow<'static, str>,
+    pub name: Cow<'static, str>,
+    pub tags: IndexMap<Cow<'static, str>, Cow<'static, str>>,
+    pub value: f64,
 }
 
 impl EventMetric {

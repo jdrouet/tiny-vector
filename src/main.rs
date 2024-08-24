@@ -4,6 +4,7 @@ mod prelude;
 mod sinks;
 mod sources;
 mod topology;
+mod transforms;
 
 fn init_tracing() {
     if let Err(err) = tracing_subscriber::fmt().try_init() {
