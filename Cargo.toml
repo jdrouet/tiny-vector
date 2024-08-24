@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["sysinfo"]
-sysinfo = ["dep:sysinfo"]
+default = ["source-sysinfo"]
+source-sysinfo = ["dep:sysinfo"]
 
 [dependencies]
 tokio = { version = "1.38.0", features = [
