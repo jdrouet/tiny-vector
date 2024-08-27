@@ -25,4 +25,13 @@ impl StringOrEnv {
                 .or(default_value.as_ref().map(String::from)),
         }
     }
+
+    pub fn into_string(self) -> Option<String> {
+        match self {
+            Self::String(inner) => Some(inner),
+            Self::EnvironmentVariable { key, default_value } => {
+                std::env::var(key).ok().or(default_value)
+            }
+        }
+    }
 }

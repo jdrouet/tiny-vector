@@ -2,13 +2,14 @@ use indexmap::IndexMap;
 use tracing::Instrument;
 
 use crate::event::Event;
+use crate::prelude::StringOrEnv;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {}
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Config {
-    fields: IndexMap<String, String>,
+    fields: IndexMap<String, StringOrEnv>,
 }
 
 impl Config {
@@ -19,7 +20,11 @@ impl Config {
         let (sender, receiver) = crate::prelude::create_channel(1000);
         Ok((
             Transform {
-                fields: self.fields,
+                fields: self
+                    .fields
+                    .into_iter()
+                    .filter_map(|(name, value)| value.into_string().map(|v| (name, v)))
+                    .collect(),
                 receiver,
                 sender: incoming,
             },
