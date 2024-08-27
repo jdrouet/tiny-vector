@@ -2,7 +2,8 @@ use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
 use tokio::sync::mpsc::error::TrySendError;
 use tracing::Instrument;
 
-use crate::event::{Event, EventMetric};
+use crate::event::metric::EventMetric;
+use crate::event::Event;
 
 const NAMESPACE: &str = "host.system";
 
@@ -189,11 +190,10 @@ impl Source {
         self.send_metric(metric)
     }
 
-    fn send_metric(&self, metric: EventMetric) -> Result<(), TrySendError<Event>> {
-        let metric = match self.hostname {
-            Some(ref inner) => metric.with_tag("hostname", inner.to_owned()),
-            None => metric,
-        };
+    fn send_metric(&self, mut metric: EventMetric) -> Result<(), TrySendError<Event>> {
+        if let Some(ref inner) = self.hostname {
+            metric.add_tag("hostname", inner.to_owned());
+        }
         self.sender.try_send(metric.into())
     }
 

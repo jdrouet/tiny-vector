@@ -1,95 +1,41 @@
 use std::borrow::Cow;
 
-use indexmap::IndexMap;
+pub mod log;
+pub mod metric;
+
+pub type CowStr = Cow<'static, str>;
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "snake_case", tag = "type", content = "content")]
 pub enum Event {
-    Log(EventLog),
-    Metric(EventMetric),
+    Log(log::EventLog),
+    Metric(metric::EventMetric),
 }
 
-impl From<EventLog> for Event {
-    fn from(value: EventLog) -> Self {
+impl From<log::EventLog> for Event {
+    fn from(value: log::EventLog) -> Self {
         Self::Log(value)
     }
 }
 
-impl From<EventMetric> for Event {
-    fn from(value: EventMetric) -> Self {
+impl From<metric::EventMetric> for Event {
+    fn from(value: metric::EventMetric) -> Self {
         Self::Metric(value)
     }
 }
 
 impl Event {
-    pub fn into_event_log(self) -> Option<EventLog> {
+    pub fn into_event_log(self) -> Option<log::EventLog> {
         match self {
             Self::Log(inner) => Some(inner),
             _ => None,
         }
     }
 
-    pub fn into_event_metric(self) -> Option<EventMetric> {
+    pub fn into_event_metric(self) -> Option<metric::EventMetric> {
         match self {
             Self::Metric(inner) => Some(inner),
             _ => None,
         }
-    }
-}
-
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
-pub struct EventLog {
-    #[serde(flatten)]
-    pub attributes: IndexMap<Cow<'static, str>, Cow<'static, str>>,
-    pub message: String,
-}
-
-impl EventLog {
-    pub fn new<M: Into<String>>(message: M) -> Self {
-        Self {
-            attributes: IndexMap::new(),
-            message: message.into(),
-        }
-    }
-
-    pub fn with_attribute<K: Into<Cow<'static, str>>, V: Into<Cow<'static, str>>>(
-        mut self,
-        name: K,
-        value: V,
-    ) -> Self {
-        self.attributes.insert(name.into(), value.into());
-        self
-    }
-}
-
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
-pub struct EventMetric {
-    pub namespace: Cow<'static, str>,
-    pub name: Cow<'static, str>,
-    pub tags: IndexMap<Cow<'static, str>, Cow<'static, str>>,
-    pub value: f64,
-}
-
-impl EventMetric {
-    pub fn new<N: Into<Cow<'static, str>>, M: Into<Cow<'static, str>>>(
-        namespace: N,
-        name: M,
-        value: f64,
-    ) -> Self {
-        Self {
-            namespace: namespace.into(),
-            name: name.into(),
-            tags: IndexMap::new(),
-            value,
-        }
-    }
-
-    pub fn with_tag<K: Into<Cow<'static, str>>, V: Into<Cow<'static, str>>>(
-        mut self,
-        name: K,
-        value: V,
-    ) -> Self {
-        self.tags.insert(name.into(), value.into());
-        self
     }
 }

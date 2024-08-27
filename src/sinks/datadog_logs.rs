@@ -35,7 +35,7 @@ struct DatadogClient {
 impl DatadogClient {
     async fn send_many(
         &self,
-        event_logs: impl Iterator<Item = crate::event::EventLog>,
+        event_logs: impl Iterator<Item = crate::event::log::EventLog>,
     ) -> Result<(), ExecutionError> {
         tracing::debug!("sending logs to datadog logs");
         let events = event_logs.collect::<Vec<_>>();

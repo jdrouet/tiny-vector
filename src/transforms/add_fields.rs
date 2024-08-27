@@ -1,4 +1,4 @@
-use indexmap::IndexSet;
+use indexmap::IndexMap;
 use tracing::Instrument;
 
 use crate::event::Event;
@@ -8,7 +8,7 @@ pub enum BuildError {}
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Config {
-    fields: IndexSet<String>,
+    fields: IndexMap<String, String>,
 }
 
 impl Config {
@@ -29,7 +29,7 @@ impl Config {
 }
 
 pub struct Transform {
-    fields: IndexSet<String>,
+    fields: IndexMap<String, String>,
     receiver: crate::prelude::Receiver,
     sender: crate::prelude::Sender,
 }
@@ -38,16 +38,15 @@ impl Transform {
     fn handle(&self, event: Event) -> Event {
         match event {
             Event::Log(mut inner) => {
-                inner
-                    .attributes
-                    .retain(|key, _| !self.fields.contains(key.as_ref()));
+                for (name, value) in self.fields.iter() {
+                    inner.add_attribute(name.clone(), value.clone());
+                }
                 Event::Log(inner)
             }
             Event::Metric(mut inner) => {
-                inner
-                    .header
-                    .tags
-                    .retain(|key, _| !self.fields.contains(key.as_ref()));
+                for (name, value) in self.fields.iter() {
+                    inner.add_tag(name.clone(), value.clone());
+                }
                 Event::Metric(inner)
             }
         }
@@ -64,12 +63,8 @@ impl Transform {
         tracing::info!("stopping");
     }
     pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!(
-            "component",
-            name,
-            kind = "transform",
-            flavor = "remove_fields"
-        );
+        let span =
+            tracing::info_span!("component", name, kind = "transform", flavor = "add_fields");
         tokio::spawn(async move { self.execute().instrument(span).await })
     }
 }
