@@ -2,6 +2,7 @@ use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
 use tokio::sync::mpsc::error::TrySendError;
 use tracing::Instrument;
 
+use crate::components::name::ComponentName;
 use crate::event::metric::EventMetric;
 use crate::event::Event;
 
@@ -233,8 +234,13 @@ impl Source {
         tracing::info!("stopping");
     }
 
-    pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!("component", name, kind = "source", flavor = "sysinfo");
+    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
+        let span = tracing::info_span!(
+            "component",
+            name = name.as_ref(),
+            kind = "source",
+            flavor = "sysinfo"
+        );
         tokio::spawn(async move { self.execute().instrument(span).await })
     }
 }

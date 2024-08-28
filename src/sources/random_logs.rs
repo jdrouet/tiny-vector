@@ -1,5 +1,7 @@
 use tracing::Instrument;
 
+use crate::components::name::ComponentName;
+
 #[derive(Debug, thiserror::Error)]
 pub struct BuildError;
 
@@ -51,8 +53,13 @@ impl Source {
         tracing::info!("stopping");
     }
 
-    pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!("component", name, kind = "source", flavor = "random_logs");
+    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
+        let span = tracing::info_span!(
+            "component",
+            name = name.as_ref(),
+            kind = "source",
+            flavor = "random_logs"
+        );
         tokio::spawn(async move { self.execute().instrument(span).await })
     }
 }

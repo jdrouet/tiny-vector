@@ -11,6 +11,7 @@ sink-datadog-logs = ["dep:reqwest"]
 
 [dependencies]
 indexmap = { version = "2.4", features = ["serde"] }
+regex = { version = "1.10" }
 reqwest = { version = "0.12", features = [
     "brotli",
     "deflate",
@@ -35,3 +36,6 @@ tokio = { version = "1.39", features = [
 toml = { version = "0.8", features = ["preserve_order"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+test-case = { version = "3.3", default-features = false }

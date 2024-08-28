@@ -1,5 +1,7 @@
 use tracing::Instrument;
 
+use crate::components::name::ComponentName;
+
 #[derive(Clone, Debug, Default, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct Config {}
@@ -33,8 +35,13 @@ impl Sink {
         tracing::info!("stopping");
     }
 
-    pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!("component", name, kind = "sink", flavor = "black_hole");
+    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
+        let span = tracing::info_span!(
+            "component",
+            name = name.as_ref(),
+            kind = "sink",
+            flavor = "black_hole"
+        );
         tokio::spawn(async move { self.execute().instrument(span).await })
     }
 }

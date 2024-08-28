@@ -1,3 +1,5 @@
+use crate::components::name::ComponentName;
+
 pub mod random_logs;
 #[cfg(feature = "source-sysinfo")]
 pub mod sysinfo;
@@ -47,7 +49,7 @@ pub enum Source {
 }
 
 impl Source {
-    pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
+    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
         match self {
             Self::RandomLogs(inner) => inner.run(name).await,
             #[cfg(feature = "source-sysinfo")]

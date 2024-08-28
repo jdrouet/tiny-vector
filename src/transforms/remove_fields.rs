@@ -1,6 +1,7 @@
 use indexmap::IndexSet;
 use tracing::Instrument;
 
+use crate::components::name::ComponentName;
 use crate::event::Event;
 
 #[derive(Debug, thiserror::Error)]
@@ -63,10 +64,10 @@ impl Transform {
         }
         tracing::info!("stopping");
     }
-    pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
+    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
         let span = tracing::info_span!(
             "component",
-            name,
+            name = name.as_ref(),
             kind = "transform",
             flavor = "remove_fields"
         );

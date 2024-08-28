@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result as IOResult};
 use std::path::Path;
 
+use crate::components::name::ComponentName;
+
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
     #[error(transparent)]
@@ -11,21 +13,21 @@ pub enum BuildError {
     #[error(transparent)]
     Sink(#[from] crate::sinks::BuildError),
     #[error("unable to find target {0}")]
-    TargetNotFound(String),
+    TargetNotFound(ComponentName),
 }
 
 #[derive(Debug, serde::Deserialize)]
 struct ConfigWithInputs<Inner> {
     #[serde(flatten)]
     inner: Inner,
-    inputs: Vec<String>,
+    inputs: Vec<ComponentName>,
 }
 
 #[derive(Debug, Default, serde::Deserialize)]
 pub struct Config {
-    sources: HashMap<String, crate::sources::Config>,
-    transforms: HashMap<String, ConfigWithInputs<crate::transforms::Config>>,
-    sinks: HashMap<String, ConfigWithInputs<crate::sinks::Config>>,
+    sources: HashMap<ComponentName, crate::sources::Config>,
+    transforms: HashMap<ComponentName, ConfigWithInputs<crate::transforms::Config>>,
+    sinks: HashMap<ComponentName, ConfigWithInputs<crate::sinks::Config>>,
 }
 
 impl Config {
@@ -78,27 +80,27 @@ impl Config {
 }
 
 pub struct Topology {
-    sources: HashMap<String, crate::sources::Source>,
-    transforms: HashMap<String, crate::transforms::Transform>,
-    sinks: HashMap<String, crate::sinks::Sink>,
+    sources: HashMap<ComponentName, crate::sources::Source>,
+    transforms: HashMap<ComponentName, crate::transforms::Transform>,
+    sinks: HashMap<ComponentName, crate::sinks::Sink>,
 }
 
 impl Topology {
-    pub async fn run(self) -> Instance {
+    pub(crate) async fn run(self) -> Instance {
         let mut sources = HashMap::with_capacity(self.sources.len());
         let mut transforms = HashMap::with_capacity(self.transforms.len());
         let mut sinks = HashMap::with_capacity(self.sinks.len());
 
         for (name, sink) in self.sinks.into_iter() {
-            let handler = sink.run(name.as_str()).await;
+            let handler = sink.run(&name).await;
             sinks.insert(name, handler);
         }
         for (name, transform) in self.transforms.into_iter() {
-            let handler = transform.run(name.as_str()).await;
+            let handler = transform.run(&name).await;
             transforms.insert(name, handler);
         }
         for (name, source) in self.sources.into_iter() {
-            let handler = source.run(name.as_str()).await;
+            let handler = source.run(&name).await;
             sources.insert(name, handler);
         }
 
@@ -110,10 +112,10 @@ impl Topology {
     }
 }
 
-pub struct Instance {
-    sources: HashMap<String, tokio::task::JoinHandle<()>>,
-    transforms: HashMap<String, tokio::task::JoinHandle<()>>,
-    sinks: HashMap<String, tokio::task::JoinHandle<()>>,
+pub(crate) struct Instance {
+    sources: HashMap<ComponentName, tokio::task::JoinHandle<()>>,
+    transforms: HashMap<ComponentName, tokio::task::JoinHandle<()>>,
+    sinks: HashMap<ComponentName, tokio::task::JoinHandle<()>>,
 }
 
 impl Instance {

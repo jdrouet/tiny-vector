@@ -4,6 +4,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::Instrument;
 
+use crate::components::name::ComponentName;
+
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
     #[error("unable to parse address")]
@@ -89,10 +91,15 @@ impl Source {
         }
     }
 
-    pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
+    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
         let listener = TcpListener::bind(self.address).await.unwrap();
 
-        let span = tracing::info_span!("component", name, kind = "source", flavor = "tcp_server");
+        let span = tracing::info_span!(
+            "component",
+            name = name.as_ref(),
+            kind = "source",
+            flavor = "tcp_server"
+        );
         tokio::spawn(async move { self.execute(listener).instrument(span).await })
     }
 }
@@ -104,6 +111,8 @@ mod tests {
 
     use tokio::io::AsyncWriteExt;
     use tokio::net::TcpStream;
+
+    use crate::components::name::ComponentName;
 
     async fn wait_for(rx: &crate::prelude::Receiver) {
         for _ in 0..100 {
@@ -123,7 +132,7 @@ mod tests {
         let (tx, rx) = crate::prelude::create_channel(10);
         let source = super::Source::new(address, tx);
 
-        let _handle = source.run("name").await;
+        let _handle = source.run(&ComponentName::from("name".to_string())).await;
 
         let mut client = TcpStream::connect(address).await.unwrap();
         let event = crate::event::Event::Log(crate::event::log::EventLog::new("Hello World!"));
@@ -142,7 +151,7 @@ mod tests {
         let (tx, rx) = crate::prelude::create_channel(10);
         let source = super::Source::new(address, tx);
 
-        let _handle = source.run("name").await;
+        let _handle = source.run(&ComponentName::from("name".to_string())).await;
 
         let mut client = TcpStream::connect(address).await.unwrap();
 

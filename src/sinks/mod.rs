@@ -1,3 +1,5 @@
+use crate::components::name::ComponentName;
+
 pub mod black_hole;
 pub mod console;
 #[cfg(feature = "sink-datadog-logs")]
@@ -51,7 +53,7 @@ pub enum Sink {
 }
 
 impl Sink {
-    pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
+    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
         match self {
             Self::BlackHole(inner) => inner.run(name).await,
             Self::Console(inner) => inner.run(name).await,

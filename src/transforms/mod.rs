@@ -1,3 +1,5 @@
+use crate::components::name::ComponentName;
+
 mod add_fields;
 mod remove_fields;
 
@@ -40,7 +42,7 @@ pub enum Transform {
 }
 
 impl Transform {
-    pub async fn run(self, name: &str) -> tokio::task::JoinHandle<()> {
+    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
         match self {
             Self::AddFields(inner) => inner.run(name).await,
             Self::RemoveFields(inner) => inner.run(name).await,
