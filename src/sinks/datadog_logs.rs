@@ -4,7 +4,7 @@ use reqwest::StatusCode;
 use tracing::Instrument;
 
 use crate::components::name::ComponentName;
-use crate::prelude::StringOrEnv;
+use crate::prelude::{Receiver, StringOrEnv};
 
 const APPLICATION_JSON: reqwest::header::HeaderValue =
     reqwest::header::HeaderValue::from_static("application/json");
@@ -75,9 +75,7 @@ impl Config {
             .map_err(BuildError::ApiTokenInvalidFormat)
     }
 
-    pub fn build(self) -> Result<(Sink, crate::prelude::Sender), BuildError> {
-        let (sender, receiver) = crate::prelude::create_channel(1000);
-
+    pub fn build(self) -> Result<Sink, BuildError> {
         let mut headers = reqwest::header::HeaderMap::with_capacity(3);
         headers.append(reqwest::header::ACCEPT, APPLICATION_JSON);
         headers.append(reqwest::header::CONTENT_TYPE, APPLICATION_JSON);
@@ -96,21 +94,20 @@ impl Config {
             }),
         };
 
-        Ok((Sink { client, receiver }, sender))
+        Ok(Sink { client })
     }
 }
 
 pub struct Sink {
     client: DatadogClient,
-    receiver: crate::prelude::Receiver,
 }
 
 impl Sink {
-    async fn execute(mut self) {
+    async fn execute(self, mut receiver: Receiver) {
         tracing::info!("starting");
         let mut buffer = Vec::with_capacity(20);
         loop {
-            let size = self.receiver.recv_many(&mut buffer, 20).await;
+            let size = receiver.recv_many(&mut buffer, 20).await;
             if size == 0 {
                 break;
             }
@@ -126,13 +123,17 @@ impl Sink {
         tracing::info!("stopping");
     }
 
-    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
+    pub async fn run(
+        self,
+        name: &ComponentName,
+        receiver: Receiver,
+    ) -> tokio::task::JoinHandle<()> {
         let span = tracing::info_span!(
             "component",
             name = name.as_ref(),
             kind = "sink",
             flavor = "datadog_logs"
         );
-        tokio::spawn(async move { self.execute().instrument(span).await })
+        tokio::spawn(async move { self.execute(receiver).instrument(span).await })
     }
 }

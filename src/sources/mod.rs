@@ -1,3 +1,4 @@
+use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
 
 pub mod random_logs;
@@ -29,13 +30,13 @@ pub enum Config {
 }
 
 impl Config {
-    pub fn build(self, sender: crate::prelude::Sender) -> Result<Source, BuildError> {
+    pub fn build(self) -> Result<Source, BuildError> {
         Ok(match self {
-            Self::RandomLogs(inner) => Source::RandomLogs(inner.build(sender)?),
+            Self::RandomLogs(inner) => Source::RandomLogs(inner.build()?),
             #[cfg(feature = "source-sysinfo")]
-            Self::Sysinfo(inner) => Source::Sysinfo(inner.build(sender)?),
+            Self::Sysinfo(inner) => Source::Sysinfo(inner.build()?),
             #[cfg(feature = "source-tcp-server")]
-            Self::TcpServer(inner) => Source::TcpServer(inner.build(sender)?),
+            Self::TcpServer(inner) => Source::TcpServer(inner.build()?),
         })
     }
 }
@@ -49,13 +50,17 @@ pub enum Source {
 }
 
 impl Source {
-    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
+    pub async fn run(
+        self,
+        name: &ComponentName,
+        collector: Collector,
+    ) -> tokio::task::JoinHandle<()> {
         match self {
-            Self::RandomLogs(inner) => inner.run(name).await,
+            Self::RandomLogs(inner) => inner.run(name, collector).await,
             #[cfg(feature = "source-sysinfo")]
-            Self::Sysinfo(inner) => inner.run(name).await,
+            Self::Sysinfo(inner) => inner.run(name, collector).await,
             #[cfg(feature = "source-tcp-server")]
-            Self::TcpServer(inner) => inner.run(name).await,
+            Self::TcpServer(inner) => inner.run(name, collector).await,
         }
     }
 }

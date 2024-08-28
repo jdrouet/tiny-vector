@@ -10,5 +10,6 @@ fn validate_name(input: &str) -> bool {
     NAME_REGEX.is_match(input)
 }
 
+pub(crate) mod collector;
 pub(crate) mod name;
 pub(crate) mod output;

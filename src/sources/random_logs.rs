@@ -1,5 +1,6 @@
 use tracing::Instrument;
 
+use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
 
 #[derive(Debug, thiserror::Error)]
@@ -25,27 +26,25 @@ fn generate() -> crate::event::Event {
 }
 
 impl Config {
-    pub fn build(self, sender: crate::prelude::Sender) -> Result<Source, BuildError> {
+    pub fn build(self) -> Result<Source, BuildError> {
         Ok(Source {
             duration: tokio::time::Duration::from_millis(self.interval.unwrap_or(1000)),
-            sender,
         })
     }
 }
 
 pub struct Source {
     duration: tokio::time::Duration,
-    sender: crate::prelude::Sender,
 }
 
 impl Source {
-    pub async fn execute(self) {
+    pub async fn execute(self, collector: Collector) {
         tracing::info!("starting");
         let mut timer = tokio::time::interval(self.duration);
         loop {
             let _ = timer.tick().await;
             tracing::debug!("generating new random log");
-            if let Err(err) = self.sender.try_send(generate()) {
+            if let Err(err) = collector.send_default(generate()).await {
                 tracing::error!("unable to send generated log: {err:?}");
                 break;
             }
@@ -53,13 +52,17 @@ impl Source {
         tracing::info!("stopping");
     }
 
-    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
+    pub async fn run(
+        self,
+        name: &ComponentName,
+        collector: Collector,
+    ) -> tokio::task::JoinHandle<()> {
         let span = tracing::info_span!(
             "component",
             name = name.as_ref(),
             kind = "source",
             flavor = "random_logs"
         );
-        tokio::spawn(async move { self.execute().instrument(span).await })
+        tokio::spawn(async move { self.execute(collector).instrument(span).await })
     }
 }

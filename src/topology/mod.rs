@@ -38,37 +38,19 @@ impl Config {
 
     pub fn build(self) -> Result<Topology, BuildError> {
         let mut sources = HashMap::with_capacity(self.sources.len());
-        let mut targets = HashMap::with_capacity(self.sources.len());
         let mut transforms = HashMap::with_capacity(self.transforms.len());
         let mut sinks = HashMap::with_capacity(self.sinks.len());
 
         for (name, ConfigWithInputs { inner, inputs }) in self.sinks.into_iter() {
-            let (sink, sender) = inner.build()?;
-            for input in inputs {
-                targets.insert(input, sender.clone());
-            }
-            sinks.insert(name, sink);
+            sinks.insert(name, inner.build()?);
         }
 
         for (name, ConfigWithInputs { inner, inputs }) in self.transforms.into_iter() {
-            if let Some(target) = targets.remove(&name) {
-                let (transform, sender) = inner.build(target)?;
-                for input in inputs {
-                    targets.insert(input, sender.clone());
-                }
-                transforms.insert(name, transform);
-            } else {
-                return Err(BuildError::TargetNotFound(name));
-            }
+            transforms.insert(name, inner.build()?);
         }
 
         for (name, inner) in self.sources.into_iter() {
-            if let Some(target) = targets.remove(&name) {
-                let source = inner.build(target)?;
-                sources.insert(name, source);
-            } else {
-                return Err(BuildError::TargetNotFound(name));
-            }
+            sources.insert(name, inner.build()?);
         }
 
         Ok(Topology {

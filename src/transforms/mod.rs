@@ -1,4 +1,6 @@
+use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
+use crate::prelude::Receiver;
 
 mod add_fields;
 mod remove_fields;
@@ -19,19 +21,10 @@ pub enum Config {
 }
 
 impl Config {
-    pub fn build(
-        self,
-        incoming: crate::prelude::Sender,
-    ) -> Result<(Transform, crate::prelude::Sender), BuildError> {
+    pub fn build(self) -> Result<Transform, BuildError> {
         Ok(match self {
-            Self::AddFields(inner) => {
-                let (tx, sender) = inner.build(incoming)?;
-                (Transform::AddFields(tx), sender)
-            }
-            Self::RemoveFields(inner) => {
-                let (tx, sender) = inner.build(incoming)?;
-                (Transform::RemoveFields(tx), sender)
-            }
+            Self::AddFields(inner) => Transform::AddFields(inner.build()?),
+            Self::RemoveFields(inner) => Transform::RemoveFields(inner.build()?),
         })
     }
 }
@@ -42,10 +35,15 @@ pub enum Transform {
 }
 
 impl Transform {
-    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
+    pub async fn run(
+        self,
+        name: &ComponentName,
+        receiver: Receiver,
+        collector: Collector,
+    ) -> tokio::task::JoinHandle<()> {
         match self {
-            Self::AddFields(inner) => inner.run(name).await,
-            Self::RemoveFields(inner) => inner.run(name).await,
+            Self::AddFields(inner) => inner.run(name, receiver, collector).await,
+            Self::RemoveFields(inner) => inner.run(name, receiver, collector).await,
         }
     }
 }

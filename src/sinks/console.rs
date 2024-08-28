@@ -1,6 +1,7 @@
 use tracing::Instrument;
 
 use crate::components::name::ComponentName;
+use crate::prelude::Receiver;
 
 #[derive(Clone, Debug, Default, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -16,32 +17,33 @@ impl std::fmt::Display for BuildError {
 }
 
 impl Config {
-    pub fn build(self) -> Result<(Sink, crate::prelude::Sender), BuildError> {
-        let (sender, receiver) = crate::prelude::create_channel(1000);
-        Ok((Sink { receiver }, sender))
+    pub fn build(self) -> Result<Sink, BuildError> {
+        Ok(Sink)
     }
 }
 
-pub struct Sink {
-    receiver: crate::prelude::Receiver,
-}
+pub struct Sink;
 
 impl Sink {
-    async fn execute(mut self) {
+    async fn execute(self, mut receiver: Receiver) {
         tracing::info!("starting");
-        while let Some(input) = self.receiver.recv().await {
+        while let Some(input) = receiver.recv().await {
             println!("{input:?}");
         }
         tracing::info!("stopping");
     }
 
-    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
+    pub async fn run(
+        self,
+        name: &ComponentName,
+        receiver: Receiver,
+    ) -> tokio::task::JoinHandle<()> {
         let span = tracing::info_span!(
             "component",
             name = name.as_ref(),
             kind = "sink",
             flavor = "console"
         );
-        tokio::spawn(async move { self.execute().instrument(span).await })
+        tokio::spawn(async move { self.execute(receiver).instrument(span).await })
     }
 }

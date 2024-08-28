@@ -1,4 +1,5 @@
 use crate::components::name::ComponentName;
+use crate::prelude::Receiver;
 
 pub mod black_hole;
 pub mod console;
@@ -26,22 +27,13 @@ pub enum Config {
 }
 
 impl Config {
-    pub fn build(self) -> Result<(Sink, crate::prelude::Sender), BuildError> {
-        match self {
-            Self::BlackHole(inner) => {
-                let (inner, tx) = inner.build()?;
-                Ok((Sink::BlackHole(inner), tx))
-            }
-            Self::Console(inner) => {
-                let (inner, tx) = inner.build()?;
-                Ok((Sink::Console(inner), tx))
-            }
+    pub fn build(self) -> Result<Sink, BuildError> {
+        Ok(match self {
+            Self::BlackHole(inner) => Sink::BlackHole(inner.build()?),
+            Self::Console(inner) => Sink::Console(inner.build()?),
             #[cfg(feature = "sink-datadog-logs")]
-            Self::DatadogLogs(inner) => {
-                let (inner, tx) = inner.build()?;
-                Ok((Sink::DatadogLogs(inner), tx))
-            }
-        }
+            Self::DatadogLogs(inner) => Sink::DatadogLogs(inner.build()?),
+        })
     }
 }
 
@@ -53,12 +45,16 @@ pub enum Sink {
 }
 
 impl Sink {
-    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
+    pub async fn run(
+        self,
+        name: &ComponentName,
+        receiver: Receiver,
+    ) -> tokio::task::JoinHandle<()> {
         match self {
-            Self::BlackHole(inner) => inner.run(name).await,
-            Self::Console(inner) => inner.run(name).await,
+            Self::BlackHole(inner) => inner.run(name, receiver).await,
+            Self::Console(inner) => inner.run(name, receiver).await,
             #[cfg(feature = "sink-datadog-logs")]
-            Self::DatadogLogs(inner) => inner.run(name).await,
+            Self::DatadogLogs(inner) => inner.run(name, receiver).await,
         }
     }
 }

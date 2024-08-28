@@ -4,7 +4,9 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::Instrument;
 
+use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
+use crate::components::output::NamedOutput;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
@@ -18,21 +20,18 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn build(self, sender: crate::prelude::Sender) -> Result<Source, BuildError> {
+    pub fn build(self) -> Result<Source, BuildError> {
         let address = match self.address {
             Some(value) => value
                 .parse::<SocketAddr>()
                 .map_err(BuildError::InvalidAddress)?,
             None => SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 4000)),
         };
-        Ok(Source { address, sender })
+        Ok(Source { address })
     }
 }
 
-async fn handle_connection(
-    stream: TcpStream,
-    sender: crate::prelude::Sender,
-) -> std::io::Result<()> {
+async fn handle_connection(stream: TcpStream, collector: Collector) -> std::io::Result<()> {
     stream.readable().await?;
     let mut reader = BufReader::new(stream);
     loop {
@@ -41,7 +40,7 @@ async fn handle_connection(
             Ok(0) => break,
             Ok(n) => match serde_json::from_slice::<crate::event::Event>(&buffer[..n]) {
                 Ok(message) => {
-                    if let Err(err) = sender.try_send(message) {
+                    if let Err(err) = collector.send_default(message).await {
                         tracing::error!("unable to send message: {err:?}");
                     }
                 }
@@ -60,38 +59,40 @@ async fn handle_connection(
 
 pub struct Source {
     address: SocketAddr,
-    sender: crate::prelude::Sender,
 }
 
 impl Source {
     #[cfg(test)]
-    fn new(address: SocketAddr, sender: crate::prelude::Sender) -> Self {
-        Self { address, sender }
+    fn new(address: SocketAddr) -> Self {
+        Self { address }
     }
 
-    async fn iterate(&self, listener: &TcpListener) -> std::io::Result<()> {
+    async fn iterate(&self, listener: &TcpListener, collector: Collector) -> std::io::Result<()> {
         let (stream, address) = listener.accept().await?;
         let span = tracing::info_span!("connection", client = %address);
-        let sender = self.sender.clone();
         tokio::spawn(async move {
             let _entered = span.enter();
-            if let Err(err) = handle_connection(stream, sender).await {
+            if let Err(err) = handle_connection(stream, collector).await {
                 tracing::error!("connection failed: {err:?}");
             }
         });
         Ok(())
     }
 
-    async fn execute(self, listener: TcpListener) {
+    async fn execute(self, listener: TcpListener, collector: Collector) {
         tracing::info!("waiting for connections");
         loop {
-            if let Err(error) = self.iterate(&listener).await {
+            if let Err(error) = self.iterate(&listener, collector.clone()).await {
                 tracing::error!("something went wrong: {error:?}");
             }
         }
     }
 
-    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
+    pub async fn run(
+        self,
+        name: &ComponentName,
+        collector: Collector,
+    ) -> tokio::task::JoinHandle<()> {
         let listener = TcpListener::bind(self.address).await.unwrap();
 
         let span = tracing::info_span!(
@@ -100,7 +101,7 @@ impl Source {
             kind = "source",
             flavor = "tcp_server"
         );
-        tokio::spawn(async move { self.execute(listener).instrument(span).await })
+        tokio::spawn(async move { self.execute(listener, collector).instrument(span).await })
     }
 }
 

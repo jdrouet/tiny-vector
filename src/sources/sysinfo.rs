@@ -1,8 +1,11 @@
+use std::collections::VecDeque;
+
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
-use tokio::sync::mpsc::error::TrySendError;
 use tracing::Instrument;
 
+use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
+use crate::components::output::NamedOutput;
 use crate::event::metric::EventMetric;
 use crate::event::Event;
 
@@ -98,11 +101,12 @@ impl Config {
             .with_memory(self.memory.refresh_kind())
     }
 
-    pub fn build(self, sender: crate::prelude::Sender) -> Result<Source, BuildError> {
+    pub fn build(self) -> Result<Source, BuildError> {
+        let specifics = self.refresh_kind();
         Ok(Source {
             duration: tokio::time::Duration::from_millis(self.interval.unwrap_or(1000)),
-            sender,
-            system: System::new_with_specifics(self.refresh_kind()),
+            system: System::new_with_specifics(specifics),
+            specifics,
             hostname: System::host_name(),
             config: self,
         })
@@ -112,135 +116,141 @@ impl Config {
 pub struct Source {
     config: Config,
     duration: tokio::time::Duration,
-    sender: crate::prelude::Sender,
     system: sysinfo::System,
+    specifics: sysinfo::RefreshKind,
     hostname: Option<String>,
 }
 
 impl Source {
     fn reload(&mut self) {
         tracing::debug!("reloading system");
-        self.system.refresh_memory();
+        self.system.refresh_specifics(self.specifics);
     }
 
-    fn global_cpu_usage(&self) -> Result<(), TrySendError<Event>> {
+    fn global_cpu_usage(&self, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.global_cpu_usage();
         let event = EventMetric::new(NAMESPACE, "global-cpu-usage", value as f64);
-        self.send_metric(event)
+        buffer.push_back(event);
     }
 
-    fn cpu_usage(&self) -> Result<(), TrySendError<Event>> {
+    fn cpu_usage(&self, buffer: &mut VecDeque<EventMetric>) {
         for cpu in self.system.cpus() {
             let value = cpu.cpu_usage();
             let event = EventMetric::new(NAMESPACE, "cpu-usage", value as f64)
                 .with_tag("name", cpu.name().to_owned());
-            self.send_metric(event)?;
+            buffer.push_back(event);
         }
-        Ok(())
     }
 
-    fn cpu_frequency(&self) -> Result<(), TrySendError<Event>> {
+    fn cpu_frequency(&self, buffer: &mut VecDeque<EventMetric>) {
         for cpu in self.system.cpus() {
             let value = cpu.frequency();
             let event = EventMetric::new(NAMESPACE, "cpu-frequency", value as f64)
                 .with_tag("name", cpu.name().to_owned());
-            self.send_metric(event)?;
+            buffer.push_back(event);
         }
-        Ok(())
     }
 
-    fn free_swap(&self) -> Result<(), TrySendError<Event>> {
+    fn free_swap(&self, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.free_swap();
         let event = EventMetric::new(NAMESPACE, "free-swap", value as f64);
-        self.send_metric(event)
+        buffer.push_back(event);
     }
 
-    fn used_swap(&self) -> Result<(), TrySendError<Event>> {
+    fn used_swap(&self, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.used_swap();
         let event = EventMetric::new(NAMESPACE, "used-swap", value as f64);
-        self.send_metric(event)
+        buffer.push_back(event);
     }
 
-    fn total_swap(&self) -> Result<(), TrySendError<Event>> {
+    fn total_swap(&self, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.total_swap();
         let event = EventMetric::new(NAMESPACE, "total-swap", value as f64);
-        self.send_metric(event)
+        buffer.push_back(event);
     }
 
-    fn available_memory(&self) -> Result<(), TrySendError<Event>> {
+    fn available_memory(&self, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.available_memory();
         let event = EventMetric::new(NAMESPACE, "available-memory", value as f64);
-        self.send_metric(event)
+        buffer.push_back(event);
     }
 
-    fn free_memory(&self) -> Result<(), TrySendError<Event>> {
+    fn free_memory(&self, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.free_memory();
         let event = EventMetric::new(NAMESPACE, "free-memory", value as f64);
-        self.send_metric(event)
+        buffer.push_back(event);
     }
 
-    fn used_memory(&self) -> Result<(), TrySendError<Event>> {
+    fn used_memory(&self, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.used_memory();
-        let metric = EventMetric::new(NAMESPACE, "used-memory", value as f64);
-        self.send_metric(metric)
+        let event = EventMetric::new(NAMESPACE, "used-memory", value as f64);
+        buffer.push_back(event);
     }
 
-    fn total_memory(&self) -> Result<(), TrySendError<Event>> {
+    fn total_memory(&self, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.total_memory();
-        let metric = EventMetric::new(NAMESPACE, "total-memory", value as f64);
-        self.send_metric(metric)
+        let event = EventMetric::new(NAMESPACE, "total-memory", value as f64);
+        buffer.push_back(event);
     }
 
-    fn send_metric(&self, mut metric: EventMetric) -> Result<(), TrySendError<Event>> {
+    fn iterate(&mut self, buffer: &mut VecDeque<EventMetric>) {
+        self.reload();
+        if self.config.cpu.usage {
+            self.global_cpu_usage(buffer);
+            self.cpu_usage(buffer);
+        }
+        if self.config.cpu.frequency {
+            self.cpu_frequency(buffer);
+        }
+        if self.config.memory.swap {
+            self.free_swap(buffer);
+            self.used_swap(buffer);
+            self.total_swap(buffer);
+        }
+        if self.config.memory.ram {
+            self.available_memory(buffer);
+            self.free_memory(buffer);
+            self.used_memory(buffer);
+            self.total_memory(buffer);
+        }
+    }
+
+    fn augment_metric(&self, mut metric: EventMetric) -> Event {
         if let Some(ref inner) = self.hostname {
             metric.add_tag("hostname", inner.to_owned());
         }
-        self.sender.try_send(metric.into())
+        metric.into()
     }
 
-    fn iterate(&mut self) -> Result<(), TrySendError<Event>> {
-        self.reload();
-        if self.config.cpu.usage {
-            self.global_cpu_usage()?;
-            self.cpu_usage()?;
-        }
-        if self.config.cpu.frequency {
-            self.cpu_frequency()?;
-        }
-        if self.config.memory.swap {
-            self.free_swap()?;
-            self.used_swap()?;
-            self.total_swap()?;
-        }
-        if self.config.memory.ram {
-            self.available_memory()?;
-            self.free_memory()?;
-            self.used_memory()?;
-            self.total_memory()?;
-        }
-        Ok(())
-    }
-
-    async fn execute(mut self) {
+    async fn execute(mut self, collector: Collector) {
         tracing::info!("starting");
         let mut timer = tokio::time::interval(self.duration);
-        loop {
+        let mut buffer = VecDeque::new();
+        'root: loop {
             let _ = timer.tick().await;
-            if let Err(err) = self.iterate() {
-                tracing::error!("unable to send generated event: {err:?}");
-                break;
+            self.iterate(&mut buffer);
+            while let Some(metric) = buffer.pop_front() {
+                let event = self.augment_metric(metric);
+                if let Err(error) = collector.send_default(event).await {
+                    tracing::error!("unable to send generated log: {error:?}");
+                    break 'root;
+                }
             }
         }
         tracing::info!("stopping");
     }
 
-    pub async fn run(self, name: &ComponentName) -> tokio::task::JoinHandle<()> {
+    pub async fn run(
+        self,
+        name: &ComponentName,
+        collector: Collector,
+    ) -> tokio::task::JoinHandle<()> {
         let span = tracing::info_span!(
             "component",
             name = name.as_ref(),
             kind = "source",
             flavor = "sysinfo"
         );
-        tokio::spawn(async move { self.execute().instrument(span).await })
+        tokio::spawn(async move { self.execute(collector).instrument(span).await })
     }
 }
