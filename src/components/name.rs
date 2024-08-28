@@ -1,14 +1,4 @@
-use std::cell::LazyCell;
-
-use regex::Regex;
-
-const NAME_REGEX: LazyCell<Regex> =
-    LazyCell::new(|| Regex::new(r"^[a-zA-Z][a-zA-Z0-9\-_]*$").unwrap());
-
-#[inline(always)]
-fn validate_component_name(input: &str) -> bool {
-    NAME_REGEX.is_match(input)
-}
+use super::validate_name;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentName(String);
@@ -43,7 +33,7 @@ impl<'de> serde::de::Deserialize<'de> for ComponentName {
         D: serde::Deserializer<'de>,
     {
         let value = String::deserialize(deserializer)?;
-        if validate_component_name(&value) {
+        if validate_name(&value) {
             Ok(Self(value))
         } else {
             Err(serde::de::Error::custom("invalid format"))
