@@ -18,8 +18,6 @@ pub enum BuildError {
     Transform(#[from] crate::transforms::BuildError),
     #[error(transparent)]
     Sink(#[from] crate::sinks::BuildError),
-    #[error("unable to find target {0}")]
-    TargetNotFound(ComponentName),
 }
 
 #[derive(Debug, serde::Deserialize)]
