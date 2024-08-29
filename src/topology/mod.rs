@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
-use crate::components::output::{ComponentOutput, NamedOutput};
+use crate::components::output::ComponentOutput;
 use crate::prelude::{create_channel, Receiver};
 use crate::sinks::Sink;
 use crate::sources::Source;
@@ -36,13 +36,7 @@ struct OuterSink {
 
 struct OuterTransform {
     inner: Transform,
-    outputs: HashSet<NamedOutput>,
     inputs: HashSet<ComponentOutput>,
-}
-
-struct OuterSource {
-    inner: Source,
-    outputs: HashSet<NamedOutput>,
 }
 
 #[derive(Debug, Default, serde::Deserialize)]
@@ -77,7 +71,6 @@ impl Config {
             transforms.insert(
                 name,
                 OuterTransform {
-                    outputs: inner.outputs(),
                     inner: inner.build()?,
                     inputs,
                 },
@@ -85,13 +78,7 @@ impl Config {
         }
 
         for (name, inner) in self.sources.into_iter() {
-            sources.insert(
-                name,
-                OuterSource {
-                    outputs: inner.outputs(),
-                    inner: inner.build()?,
-                },
-            );
+            sources.insert(name, inner.build()?);
         }
 
         Ok(Topology {
@@ -103,7 +90,7 @@ impl Config {
 }
 
 pub struct Topology {
-    sources: HashMap<ComponentName, OuterSource>,
+    sources: HashMap<ComponentName, Source>,
     transforms: HashMap<ComponentName, OuterTransform>,
     sinks: HashMap<ComponentName, OuterSink>,
 }
@@ -156,7 +143,7 @@ impl Topology {
         }
         for (name, source) in self.sources.into_iter() {
             let collector = collectors.remove(&name).unwrap_or_default();
-            let handler = source.inner.run(&name, collector).await;
+            let handler = source.run(&name, collector).await;
             sources.insert(name, handler);
         }
 
