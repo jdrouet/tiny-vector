@@ -10,6 +10,8 @@ use crate::sinks::Sink;
 use crate::sources::Source;
 use crate::transforms::Transform;
 
+pub mod validation;
+
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
     #[error(transparent)]
@@ -18,13 +20,15 @@ pub enum BuildError {
     Transform(#[from] crate::transforms::BuildError),
     #[error(transparent)]
     Sink(#[from] crate::sinks::BuildError),
+    #[error("the configuration is invalid")]
+    Validation(Vec<self::validation::ValidationError>),
 }
 
 #[derive(Debug, serde::Deserialize)]
 struct WithInputs<Inner> {
     #[serde(flatten)]
     inner: Inner,
-    inputs: HashSet<ComponentOutput>,
+    inputs: HashSet<ComponentOutput<'static>>,
 }
 
 #[derive(Debug, Default, serde::Deserialize)]
@@ -40,7 +44,7 @@ impl Config {
         toml::de::from_str(&file).map_err(|error| Error::new(ErrorKind::InvalidData, error))
     }
 
-    pub fn build(self) -> Result<Topology, BuildError> {
+    fn compile(self) -> Result<Topology, BuildError> {
         let mut sources = HashMap::with_capacity(self.sources.len());
         let mut transforms = HashMap::with_capacity(self.transforms.len());
         let mut sinks = HashMap::with_capacity(self.sinks.len());
@@ -75,6 +79,12 @@ impl Config {
             sinks,
         })
     }
+
+    pub fn build(self) -> Result<Topology, BuildError> {
+        self.validate()
+            .map_err(BuildError::Validation)
+            .and_then(|c| c.compile())
+    }
 }
 
 pub struct Topology {
@@ -96,16 +106,16 @@ impl Topology {
             let (sender, receiver) = create_channel(1000);
             receivers.insert(name.clone(), receiver);
             for input in sink.inputs.iter() {
-                let collector = collectors.entry(input.name.clone()).or_default();
-                collector.add_output(input.output.clone(), sender.clone());
+                let collector = collectors.entry(input.to_owned_name()).or_default();
+                collector.add_output(input.to_owned_output(), sender.clone());
             }
         }
         for (name, transform) in self.transforms.iter() {
             let (sender, receiver) = create_channel(1000);
             receivers.insert(name.clone(), receiver);
             for input in transform.inputs.iter() {
-                let collector = collectors.entry(input.name.clone()).or_default();
-                collector.add_output(input.output.clone(), sender.clone());
+                let collector = collectors.entry(input.to_owned_name()).or_default();
+                collector.add_output(input.to_owned_output(), sender.clone());
             }
         }
         (collectors, receivers)

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use super::name::ComponentName;
 use super::validate_name;
 use crate::event::CowStr;
@@ -42,27 +44,42 @@ impl AsRef<str> for NamedOutput {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ComponentOutput {
-    pub name: ComponentName,
-    pub output: NamedOutput,
+pub struct ComponentOutput<'a> {
+    pub name: Cow<'a, ComponentName>,
+    pub output: Cow<'a, NamedOutput>,
 }
 
-impl From<AbstractComponentOutput> for ComponentOutput {
+impl<'a> ComponentOutput<'a> {
+    pub fn to_owned_name(&self) -> ComponentName {
+        match self.name {
+            Cow::Owned(ref inner) => inner.clone(),
+            Cow::Borrowed(inner) => inner.clone(),
+        }
+    }
+    pub fn to_owned_output(&self) -> NamedOutput {
+        match self.output {
+            Cow::Owned(ref inner) => inner.clone(),
+            Cow::Borrowed(inner) => inner.clone(),
+        }
+    }
+}
+
+impl From<AbstractComponentOutput> for ComponentOutput<'static> {
     fn from(value: AbstractComponentOutput) -> Self {
         match value {
             AbstractComponentOutput::Default(name) => ComponentOutput {
-                name,
-                output: NamedOutput::Default,
+                name: Cow::Owned(name),
+                output: Cow::Owned(NamedOutput::Default),
             },
             AbstractComponentOutput::Named { component, output } => ComponentOutput {
-                name: component,
-                output,
+                name: Cow::Owned(component),
+                output: Cow::Owned(output),
             },
         }
     }
 }
 
-impl<'de> serde::de::Deserialize<'de> for ComponentOutput {
+impl<'de> serde::de::Deserialize<'de> for ComponentOutput<'static> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
