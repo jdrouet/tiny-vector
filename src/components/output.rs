@@ -10,6 +10,12 @@ pub enum NamedOutput {
     Named(CowStr),
 }
 
+impl std::fmt::Display for NamedOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())
+    }
+}
+
 impl<'de> serde::de::Deserialize<'de> for NamedOutput {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -49,13 +55,37 @@ pub struct ComponentOutput<'a> {
     pub output: Cow<'a, NamedOutput>,
 }
 
+impl<'a> std::fmt::Display for ComponentOutput<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}#{}", self.name, self.output)
+    }
+}
+
 impl<'a> ComponentOutput<'a> {
+    pub fn to_owned(&self) -> ComponentOutput<'static> {
+        ComponentOutput::<'static> {
+            name: Cow::Owned(self.to_owned_name()),
+            output: Cow::Owned(self.to_owned_output()),
+        }
+    }
+
+    pub fn to_borrowed<'b>(&'a self) -> ComponentOutput<'b>
+    where
+        'a: 'b,
+    {
+        ComponentOutput {
+            name: Cow::Borrowed(self.name.as_ref()),
+            output: Cow::Borrowed(self.output.as_ref()),
+        }
+    }
+
     pub fn to_owned_name(&self) -> ComponentName {
         match self.name {
             Cow::Owned(ref inner) => inner.clone(),
             Cow::Borrowed(inner) => inner.clone(),
         }
     }
+
     pub fn to_owned_output(&self) -> NamedOutput {
         match self.output {
             Cow::Owned(ref inner) => inner.clone(),
