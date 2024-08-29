@@ -124,7 +124,7 @@ impl Topology {
             sinks.insert(name, handler);
         }
         for (name, transform) in self.transforms.into_iter() {
-            let receiver = receivers.remove(&name).expect("receiver for sink");
+            let receiver = receivers.remove(&name).expect("receiver for transform");
             let collector = collectors.remove(&name).unwrap_or_default();
             let handler = transform.inner.run(&name, receiver, collector).await;
             transforms.insert(name, handler);
