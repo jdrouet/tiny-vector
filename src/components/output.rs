@@ -1,10 +1,11 @@
 use super::name::ComponentName;
 use super::validate_name;
+use crate::event::CowStr;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum NamedOutput {
     Default,
-    Named(String),
+    Named(CowStr),
 }
 
 impl<'de> serde::de::Deserialize<'de> for NamedOutput {
@@ -17,7 +18,7 @@ impl<'de> serde::de::Deserialize<'de> for NamedOutput {
             Ok(if value == "default" {
                 NamedOutput::Default
             } else {
-                NamedOutput::Named(value)
+                NamedOutput::Named(CowStr::Owned(value))
             })
         } else {
             Err(serde::de::Error::custom("invalid format"))
@@ -35,7 +36,7 @@ impl AsRef<str> for NamedOutput {
     fn as_ref(&self) -> &str {
         match self {
             Self::Default => "default",
-            Self::Named(inner) => inner.as_str(),
+            Self::Named(inner) => inner.as_ref(),
         }
     }
 }

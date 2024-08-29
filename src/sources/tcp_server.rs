@@ -6,7 +6,6 @@ use tracing::Instrument;
 
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
-use crate::components::output::NamedOutput;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {

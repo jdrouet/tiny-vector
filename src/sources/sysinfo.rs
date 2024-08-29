@@ -5,7 +5,6 @@ use tracing::Instrument;
 
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
-use crate::components::output::NamedOutput;
 use crate::event::metric::EventMetric;
 use crate::event::Event;
 

@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use tokio::sync::mpsc::error::SendError;
 
 use super::output::NamedOutput;
-use crate::event::Event;
+use crate::event::{CowStr, Event};
 use crate::prelude::Sender;
 
 #[derive(Clone, Debug, Default)]
 pub struct Collector {
     default: Option<Sender>,
-    others: HashMap<String, Sender>,
+    others: HashMap<CowStr, Sender>,
 }
 
 impl Collector {
