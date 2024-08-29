@@ -24,6 +24,19 @@ impl Collector {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn with_output(mut self, named: NamedOutput, sender: Sender) -> Self {
+        match named {
+            NamedOutput::Default => {
+                self.default = Some(sender);
+            }
+            NamedOutput::Named(inner) => {
+                self.others.insert(inner, sender);
+            }
+        };
+        self
+    }
+
     pub async fn send_default(&self, event: Event) -> Result<(), SendError<Event>> {
         match self.default {
             Some(ref inner) => inner.send(event).await?,

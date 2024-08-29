@@ -3,9 +3,9 @@ use super::validate_name;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentName(String);
 
-impl From<String> for ComponentName {
-    fn from(value: String) -> Self {
-        Self(value)
+impl<T: Into<String>> From<T> for ComponentName {
+    fn from(value: T) -> Self {
+        Self(value.into())
     }
 }
 
@@ -53,7 +53,7 @@ mod tests {
     #[test_case::test_case("foo-bar"; "with dash")]
     #[test_case::test_case("foo-123-bar"; "with numbers")]
     fn should_validate(input: &str) {
-        assert!(super::validate_component_name(input))
+        assert!(super::validate_name(input))
     }
 
     #[test_case::test_case(""; "empty")]
@@ -61,7 +61,7 @@ mod tests {
     #[test_case::test_case("foo bar"; "with space")]
     #[test_case::test_case("42_foo_bar"; "starting with number")]
     fn should_not_validate(input: &str) {
-        assert!(!super::validate_component_name(input))
+        assert!(!super::validate_name(input))
     }
 
     #[derive(Debug, serde::Deserialize)]

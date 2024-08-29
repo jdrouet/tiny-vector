@@ -112,7 +112,9 @@ mod tests {
     use tokio::io::AsyncWriteExt;
     use tokio::net::TcpStream;
 
+    use crate::components::collector::Collector;
     use crate::components::name::ComponentName;
+    use crate::components::output::NamedOutput;
 
     async fn wait_for(rx: &crate::prelude::Receiver) {
         for _ in 0..100 {
@@ -130,9 +132,10 @@ mod tests {
 
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 5000);
         let (tx, rx) = crate::prelude::create_channel(10);
-        let source = super::Source::new(address, tx);
+        let collector = Collector::default().with_output(NamedOutput::Default, tx);
+        let source = super::Source::new(address);
 
-        let _handle = source.run(&ComponentName::from("name".to_string())).await;
+        let _handle = source.run(&ComponentName::from("name"), collector).await;
 
         let mut client = TcpStream::connect(address).await.unwrap();
         let event = crate::event::Event::Log(crate::event::log::EventLog::new("Hello World!"));
@@ -149,9 +152,10 @@ mod tests {
 
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 5001);
         let (tx, rx) = crate::prelude::create_channel(10);
-        let source = super::Source::new(address, tx);
+        let collector = Collector::default().with_output(NamedOutput::Default, tx);
+        let source = super::Source::new(address);
 
-        let _handle = source.run(&ComponentName::from("name".to_string())).await;
+        let _handle = source.run(&ComponentName::from("name"), collector).await;
 
         let mut client = TcpStream::connect(address).await.unwrap();
 
