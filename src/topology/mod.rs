@@ -21,27 +21,17 @@ pub enum BuildError {
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct ConfigWithInputs<Inner> {
+struct WithInputs<Inner> {
     #[serde(flatten)]
     inner: Inner,
-    inputs: HashSet<ComponentOutput>,
-}
-
-struct OuterSink {
-    inner: Sink,
-    inputs: HashSet<ComponentOutput>,
-}
-
-struct OuterTransform {
-    inner: Transform,
     inputs: HashSet<ComponentOutput>,
 }
 
 #[derive(Debug, Default, serde::Deserialize)]
 pub struct Config {
     sources: HashMap<ComponentName, crate::sources::Config>,
-    transforms: HashMap<ComponentName, ConfigWithInputs<crate::transforms::Config>>,
-    sinks: HashMap<ComponentName, ConfigWithInputs<crate::sinks::Config>>,
+    transforms: HashMap<ComponentName, WithInputs<crate::transforms::Config>>,
+    sinks: HashMap<ComponentName, WithInputs<crate::sinks::Config>>,
 }
 
 impl Config {
@@ -55,20 +45,20 @@ impl Config {
         let mut transforms = HashMap::with_capacity(self.transforms.len());
         let mut sinks = HashMap::with_capacity(self.sinks.len());
 
-        for (name, ConfigWithInputs { inner, inputs }) in self.sinks.into_iter() {
+        for (name, WithInputs { inner, inputs }) in self.sinks.into_iter() {
             sinks.insert(
                 name,
-                OuterSink {
+                WithInputs {
                     inner: inner.build()?,
                     inputs,
                 },
             );
         }
 
-        for (name, ConfigWithInputs { inner, inputs }) in self.transforms.into_iter() {
+        for (name, WithInputs { inner, inputs }) in self.transforms.into_iter() {
             transforms.insert(
                 name,
-                OuterTransform {
+                WithInputs {
                     inner: inner.build()?,
                     inputs,
                 },
@@ -89,8 +79,8 @@ impl Config {
 
 pub struct Topology {
     sources: HashMap<ComponentName, Source>,
-    transforms: HashMap<ComponentName, OuterTransform>,
-    sinks: HashMap<ComponentName, OuterSink>,
+    transforms: HashMap<ComponentName, WithInputs<Transform>>,
+    sinks: HashMap<ComponentName, WithInputs<Sink>>,
 }
 
 impl Topology {
