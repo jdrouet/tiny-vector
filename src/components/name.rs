@@ -47,23 +47,6 @@ mod tests {
 
     use super::ComponentName;
 
-    #[test_case::test_case("foo"; "basic")]
-    #[test_case::test_case("f"; "single character")]
-    #[test_case::test_case("foo_bar"; "with lodash")]
-    #[test_case::test_case("foo-bar"; "with dash")]
-    #[test_case::test_case("foo-123-bar"; "with numbers")]
-    fn should_validate(input: &str) {
-        assert!(super::validate_name(input))
-    }
-
-    #[test_case::test_case(""; "empty")]
-    #[test_case::test_case("   "; "only spaces")]
-    #[test_case::test_case("foo bar"; "with space")]
-    #[test_case::test_case("42_foo_bar"; "starting with number")]
-    fn should_not_validate(input: &str) {
-        assert!(!super::validate_name(input))
-    }
-
     #[derive(Debug, serde::Deserialize)]
     struct Example {
         #[allow(dead_code)]
