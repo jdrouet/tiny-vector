@@ -1,5 +1,8 @@
+use std::collections::HashSet;
+
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
+use crate::components::output::NamedOutput;
 
 pub mod random_logs;
 #[cfg(feature = "source-sysinfo")]
@@ -30,6 +33,10 @@ pub enum Config {
 }
 
 impl Config {
+    pub fn outputs(&self) -> HashSet<NamedOutput> {
+        HashSet::from_iter([NamedOutput::Default])
+    }
+
     pub fn build(self) -> Result<Source, BuildError> {
         Ok(match self {
             Self::RandomLogs(inner) => Source::RandomLogs(inner.build()?),

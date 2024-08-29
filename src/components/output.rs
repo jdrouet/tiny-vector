@@ -42,8 +42,8 @@ impl AsRef<str> for NamedOutput {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ComponentOutput {
-    name: ComponentName,
-    output: NamedOutput,
+    pub name: ComponentName,
+    pub output: NamedOutput,
 }
 
 impl From<AbstractComponentOutput> for ComponentOutput {

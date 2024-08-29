@@ -1,5 +1,8 @@
+use std::collections::HashSet;
+
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
+use crate::components::output::NamedOutput;
 use crate::prelude::Receiver;
 
 mod add_fields;
@@ -21,6 +24,10 @@ pub enum Config {
 }
 
 impl Config {
+    pub fn outputs(&self) -> HashSet<NamedOutput> {
+        HashSet::from_iter([NamedOutput::Default])
+    }
+
     pub fn build(self) -> Result<Transform, BuildError> {
         Ok(match self {
             Self::AddFields(inner) => Transform::AddFields(inner.build()?),
