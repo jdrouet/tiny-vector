@@ -182,6 +182,7 @@ mod tests {
     use super::{Config, WithInputs};
     use crate::components::name::ComponentName;
     use crate::components::output::{ComponentOutput, NamedOutput};
+    use crate::topology::validation::ValidationError;
 
     #[test]
     fn component_output_shouldnt_be_used_more_than_once() {
@@ -211,6 +212,72 @@ mod tests {
             },
         );
         let errors = config.validate().unwrap_err();
-        assert!(!errors.is_empty());
+        assert_eq!(
+            errors,
+            vec![ValidationError::MultipleUseOfInput {
+                input: ComponentOutput {
+                    name: Cow::Owned(ComponentName::from("foo")),
+                    output: Cow::Owned(NamedOutput::Default),
+                },
+                targets: HashSet::from_iter([
+                    ComponentName::from("baz"),
+                    ComponentName::from("bar")
+                ])
+            }]
+        );
+    }
+
+    #[test]
+    fn component_without_input() {
+        let mut config = Config::default();
+        config.sinks.insert(
+            ComponentName::from("bar"),
+            WithInputs {
+                inner: crate::sinks::Config::BlackHole(crate::sinks::black_hole::Config::default()),
+                inputs: HashSet::new(),
+            },
+        );
+        let errors = config.validate().unwrap_err();
+        assert_eq!(
+            errors,
+            vec![
+                ValidationError::NoInput {
+                    name: ComponentName::from("bar")
+                },
+                ValidationError::OrphanComponent {
+                    name: ComponentName::from("bar")
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn topology_with_orphan_components() {
+        let mut config = Config::default();
+        config.sources.insert(
+            ComponentName::from("foo"),
+            crate::sources::Config::RandomLogs(crate::sources::random_logs::Config::default()),
+        );
+        config.sources.insert(
+            ComponentName::from("orphan"),
+            crate::sources::Config::RandomLogs(crate::sources::random_logs::Config::default()),
+        );
+        config.sinks.insert(
+            ComponentName::from("bar"),
+            WithInputs {
+                inner: crate::sinks::Config::BlackHole(crate::sinks::black_hole::Config::default()),
+                inputs: HashSet::from_iter([ComponentOutput {
+                    name: Cow::Owned(ComponentName::from("foo")),
+                    output: Cow::Owned(NamedOutput::Default),
+                }]),
+            },
+        );
+        let errors = config.validate().unwrap_err();
+        assert_eq!(
+            errors,
+            vec![ValidationError::OrphanComponent {
+                name: ComponentName::from("orphan")
+            }]
+        );
     }
 }
