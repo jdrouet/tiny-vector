@@ -15,7 +15,7 @@ pub enum ValidationError {
 type Relations<'a> = HashMap<ComponentOutput<'a>, Vec<&'a ComponentName>>;
 
 impl super::Config {
-    fn many_relations<'a>(&'a self) -> Relations {
+    fn many_relations(&self) -> Relations {
         self.sinks
             .iter()
             .flat_map(|(name, sink)| {
@@ -35,7 +35,7 @@ impl super::Config {
             })
     }
 
-    fn check_input_single_use<'a>(&'a self, errors: &mut Vec<ValidationError>) {
+    fn check_input_single_use(&self, errors: &mut Vec<ValidationError>) {
         let input_to_target = self.many_relations();
         for (input, targets) in input_to_target
             .into_iter()
@@ -43,7 +43,7 @@ impl super::Config {
         {
             errors.push(ValidationError::MultipleUseOfInput {
                 input: input.to_owned(),
-                targets: targets.into_iter().map(|v| v.clone()).collect(),
+                targets: targets.into_iter().cloned().collect(),
             })
         }
     }

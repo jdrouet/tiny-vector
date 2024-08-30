@@ -53,7 +53,7 @@ impl Collector {
         match output {
             NamedOutput::Default => self.send_default(event).await?,
             NamedOutput::Named(inner) => match self.others.get(&inner) {
-                Some(ref inner) => inner.send(event).await?,
+                Some(inner) => inner.send(event).await?,
                 None => tracing::trace!("no {inner:?} output, discarding event"),
             },
         };

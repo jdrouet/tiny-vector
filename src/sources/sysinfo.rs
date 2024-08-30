@@ -43,11 +43,10 @@ impl CpuConfig {
             true => res.with_cpu_usage(),
             false => res.without_cpu_usage(),
         };
-        let res = match self.frequency {
+        match self.frequency {
             true => res.with_frequency(),
             false => res.without_frequency(),
-        };
-        res
+        }
     }
 }
 
@@ -75,11 +74,10 @@ impl MemoryConfig {
             true => res.with_ram(),
             false => res.without_ram(),
         };
-        let res = match self.swap {
+        match self.swap {
             true => res.with_swap(),
             false => res.without_swap(),
-        };
-        res
+        }
     }
 }
 
