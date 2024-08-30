@@ -1043,6 +1043,7 @@ name = "tiny-vector"
 version = "0.1.0"
 dependencies = [
  "indexmap",
+ "once_cell",
  "regex",
  "reqwest",
  "serde",

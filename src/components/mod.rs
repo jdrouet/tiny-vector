@@ -1,13 +1,11 @@
-use std::cell::LazyCell;
-
+use once_cell::sync::Lazy;
 use regex::Regex;
 
 pub(crate) mod collector;
 pub(crate) mod name;
 pub(crate) mod output;
 
-const NAME_REGEX: LazyCell<Regex> =
-    LazyCell::new(|| Regex::new(r"^[a-zA-Z][a-zA-Z0-9\-_]*$").unwrap());
+static NAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-zA-Z][a-zA-Z0-9\-_]*$").unwrap());
 
 #[inline(always)]
 fn validate_name(input: &str) -> bool {
