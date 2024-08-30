@@ -10,6 +10,13 @@ pub enum NamedOutput {
     Named(CowStr),
 }
 
+#[cfg(test)]
+impl NamedOutput {
+    pub fn named<N: Into<CowStr>>(name: N) -> Self {
+        Self::Named(name.into())
+    }
+}
+
 impl std::fmt::Display for NamedOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_ref())
