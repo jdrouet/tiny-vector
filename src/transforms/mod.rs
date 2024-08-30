@@ -6,7 +6,9 @@ use crate::components::output::NamedOutput;
 use crate::prelude::Receiver;
 
 pub mod add_fields;
+pub mod condition;
 pub mod remove_fields;
+pub mod route;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
@@ -14,6 +16,8 @@ pub enum BuildError {
     AddFields(#[from] self::add_fields::BuildError),
     #[error(transparent)]
     RemoveFields(#[from] self::remove_fields::BuildError),
+    #[error(transparent)]
+    Route(#[from] self::route::BuildError),
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -21,6 +25,7 @@ pub enum BuildError {
 pub enum Config {
     AddFields(self::add_fields::Config),
     RemoveFields(self::remove_fields::Config),
+    Route(self::route::Config),
 }
 
 impl Config {
@@ -32,6 +37,7 @@ impl Config {
         Ok(match self {
             Self::AddFields(inner) => Transform::AddFields(inner.build()?),
             Self::RemoveFields(inner) => Transform::RemoveFields(inner.build()?),
+            Self::Route(inner) => Transform::Route(inner.build()?),
         })
     }
 }
@@ -39,6 +45,7 @@ impl Config {
 pub enum Transform {
     AddFields(self::add_fields::Transform),
     RemoveFields(self::remove_fields::Transform),
+    Route(self::route::Transform),
 }
 
 impl Transform {
@@ -51,6 +58,7 @@ impl Transform {
         match self {
             Self::AddFields(inner) => inner.run(name, receiver, collector).await,
             Self::RemoveFields(inner) => inner.run(name, receiver, collector).await,
+            Self::Route(inner) => inner.run(name, receiver, collector).await,
         }
     }
 }

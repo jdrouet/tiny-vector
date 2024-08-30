@@ -26,33 +26,28 @@ impl Collector {
 
     #[cfg(test)]
     pub(crate) fn with_output(mut self, named: NamedOutput, sender: Sender) -> Self {
-        match named {
-            NamedOutput::Default => {
-                self.default = Some(sender);
-            }
-            NamedOutput::Named(inner) => {
-                self.others.insert(inner, sender);
-            }
-        };
+        self.add_output(named, sender);
         self
     }
 
     pub async fn send_default(&self, event: Event) -> Result<(), SendError<Event>> {
         match self.default {
-            Some(ref inner) => inner.send(event).await?,
-            None => tracing::trace!("no default output, discarding event"),
-        };
-        Ok(())
+            Some(ref inner) => inner.send(event).await,
+            None => {
+                tracing::trace!("no default output, discarding event");
+                Ok(())
+            }
+        }
     }
 
     pub async fn send_named(
         &self,
-        output: NamedOutput,
+        output: &NamedOutput,
         event: Event,
     ) -> Result<(), SendError<Event>> {
         match output {
             NamedOutput::Default => self.send_default(event).await?,
-            NamedOutput::Named(inner) => match self.others.get(&inner) {
+            NamedOutput::Named(inner) => match self.others.get(inner.as_ref()) {
                 Some(inner) => inner.send(event).await?,
                 None => tracing::trace!("no {inner:?} output, discarding event"),
             },
