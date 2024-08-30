@@ -84,31 +84,12 @@ impl<'a> Node<'a> {
 
 struct Graph<'a> {
     config: &'a super::Config,
-    inputs: HashMap<&'a ComponentName, &'a HashSet<ComponentOutput<'a>>>,
-    outputs: HashMap<&'a ComponentName, HashSet<NamedOutput>>,
     nodes: HashMap<&'a ComponentName, Node<'a>>,
     relations: RelationMap<'a>,
 }
 
 impl<'a> Graph<'a> {
     fn build(config: &'a Config) -> Self {
-        let inputs = config
-            .transforms
-            .iter()
-            .map(|(name, transform)| (name, &transform.inputs))
-            .chain(config.sinks.iter().map(|(name, sink)| (name, &sink.inputs)))
-            .collect();
-        let outputs = config
-            .sources
-            .iter()
-            .map(|(name, source)| (name, source.outputs()))
-            .chain(
-                config
-                    .transforms
-                    .iter()
-                    .map(|(name, transform)| (name, transform.inner.outputs())),
-            )
-            .collect();
         let nodes = config
             .sources
             .iter()
@@ -136,8 +117,6 @@ impl<'a> Graph<'a> {
             });
         Self {
             config,
-            inputs,
-            outputs,
             nodes,
             relations,
         }
