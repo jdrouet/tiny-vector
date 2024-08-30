@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
-use crate::components::output::NamedOutput;
+use crate::components::output::{ComponentWithOutputs, NamedOutput};
 use crate::prelude::Receiver;
 
 pub mod add_fields;
@@ -28,11 +28,17 @@ pub enum Config {
     Route(self::route::Config),
 }
 
-impl Config {
-    pub fn outputs(&self) -> HashSet<NamedOutput> {
-        HashSet::from_iter([NamedOutput::Default])
+impl ComponentWithOutputs for Config {
+    fn outputs(&self) -> HashSet<NamedOutput> {
+        match self {
+            Self::AddFields(inner) => inner.outputs(),
+            Self::RemoveFields(inner) => inner.outputs(),
+            Self::Route(inner) => inner.outputs(),
+        }
     }
+}
 
+impl Config {
     pub fn build(self) -> Result<Transform, BuildError> {
         Ok(match self {
             Self::AddFields(inner) => Transform::AddFields(inner.build()?),

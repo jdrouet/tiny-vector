@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use super::{Config, WithInputs};
 use crate::components::name::ComponentName;
-use crate::components::output::{ComponentOutput, NamedOutput};
+use crate::components::output::{ComponentOutput, ComponentWithOutputs, NamedOutput};
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ValidationError {

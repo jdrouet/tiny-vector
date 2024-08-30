@@ -1,8 +1,15 @@
 use std::borrow::Cow;
+use std::collections::HashSet;
 
 use super::name::ComponentName;
 use super::validate_name;
 use crate::event::CowStr;
+
+pub trait ComponentWithOutputs {
+    fn outputs(&self) -> HashSet<NamedOutput> {
+        HashSet::from_iter([NamedOutput::Default])
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum NamedOutput {

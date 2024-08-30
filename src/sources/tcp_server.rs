@@ -6,6 +6,7 @@ use tracing::Instrument;
 
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
+use crate::components::output::ComponentWithOutputs;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
@@ -17,6 +18,8 @@ pub enum BuildError {
 pub struct Config {
     pub address: Option<String>,
 }
+
+impl ComponentWithOutputs for Config {}
 
 impl Config {
     pub fn build(self) -> Result<Source, BuildError> {

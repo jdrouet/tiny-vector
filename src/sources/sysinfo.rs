@@ -5,6 +5,7 @@ use tracing::Instrument;
 
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
+use crate::components::output::ComponentWithOutputs;
 use crate::event::metric::EventMetric;
 use crate::event::Event;
 
@@ -90,6 +91,8 @@ pub struct Config {
     #[serde(default)]
     pub memory: MemoryConfig,
 }
+
+impl ComponentWithOutputs for Config {}
 
 impl Config {
     fn refresh_kind(&self) -> RefreshKind {

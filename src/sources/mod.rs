@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
-use crate::components::output::NamedOutput;
+use crate::components::output::{ComponentWithOutputs, NamedOutput};
 
 pub mod random_logs;
 #[cfg(feature = "source-sysinfo")]
@@ -32,11 +32,19 @@ pub enum Config {
     TcpServer(self::tcp_server::Config),
 }
 
-impl Config {
-    pub fn outputs(&self) -> HashSet<NamedOutput> {
-        HashSet::from_iter([NamedOutput::Default])
+impl ComponentWithOutputs for Config {
+    fn outputs(&self) -> HashSet<NamedOutput> {
+        match self {
+            Self::RandomLogs(inner) => inner.outputs(),
+            #[cfg(feature = "source-sysinfo")]
+            Self::Sysinfo(inner) => inner.outputs(),
+            #[cfg(feature = "source-tcp-server")]
+            Self::TcpServer(inner) => inner.outputs(),
+        }
     }
+}
 
+impl Config {
     pub fn build(self) -> Result<Source, BuildError> {
         Ok(match self {
             Self::RandomLogs(inner) => Source::RandomLogs(inner.build()?),

@@ -3,6 +3,7 @@ use tracing::Instrument;
 
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
+use crate::components::output::ComponentWithOutputs;
 use crate::event::Event;
 use crate::prelude::{Receiver, StringOrEnv};
 
@@ -14,6 +15,8 @@ pub enum BuildError {}
 pub struct Config {
     fields: IndexMap<String, StringOrEnv>,
 }
+
+impl ComponentWithOutputs for Config {}
 
 impl Config {
     pub fn build(self) -> Result<Transform, BuildError> {

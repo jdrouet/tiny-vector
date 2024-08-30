@@ -7,7 +7,7 @@ use tracing::Instrument;
 use super::condition::Condition;
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
-use crate::components::output::NamedOutput;
+use crate::components::output::{ComponentWithOutputs, NamedOutput};
 use crate::event::Event;
 use crate::prelude::Receiver;
 
@@ -15,6 +15,10 @@ use crate::prelude::Receiver;
 pub enum BuildError {
     #[error("the fallback route {name} is conflicting with the defined routes")]
     FallbackRouteConflict { name: NamedOutput },
+}
+
+fn default_fallback() -> NamedOutput {
+    NamedOutput::Named("dropped".into())
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -26,15 +30,21 @@ pub struct Config {
     fallback: Option<NamedOutput>,
 }
 
-impl Config {
-    pub fn outputs(&self) -> HashSet<NamedOutput> {
-        HashSet::from_iter([NamedOutput::Default])
+impl ComponentWithOutputs for Config {
+    fn outputs(&self) -> HashSet<NamedOutput> {
+        let mut res = HashSet::from_iter(self.routes.keys().cloned());
+        if let Some(ref fb) = self.fallback {
+            res.insert(fb.clone());
+        } else {
+            res.insert(default_fallback());
+        }
+        res
     }
+}
 
+impl Config {
     pub fn build(self) -> Result<Transform, BuildError> {
-        let fallback = self
-            .fallback
-            .unwrap_or_else(|| NamedOutput::Named("dropped".into()));
+        let fallback = self.fallback.unwrap_or_else(default_fallback);
         if self.routes.contains_key(&fallback) {
             Err(BuildError::FallbackRouteConflict { name: fallback })
         } else {
