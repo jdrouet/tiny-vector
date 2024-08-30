@@ -173,3 +173,44 @@ impl Instance {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::borrow::Cow;
+    use std::collections::HashSet;
+
+    use super::{Config, WithInputs};
+    use crate::components::name::ComponentName;
+    use crate::components::output::{ComponentOutput, NamedOutput};
+
+    #[test]
+    fn component_output_shouldnt_be_used_more_than_once() {
+        let mut config = Config::default();
+        config.sources.insert(
+            ComponentName::from("foo"),
+            crate::sources::Config::RandomLogs(crate::sources::random_logs::Config::default()),
+        );
+        config.sinks.insert(
+            ComponentName::from("bar"),
+            WithInputs {
+                inner: crate::sinks::Config::BlackHole(crate::sinks::black_hole::Config::default()),
+                inputs: HashSet::from_iter([ComponentOutput {
+                    name: Cow::Owned(ComponentName::from("foo")),
+                    output: Cow::Owned(NamedOutput::Default),
+                }]),
+            },
+        );
+        config.sinks.insert(
+            ComponentName::from("baz"),
+            WithInputs {
+                inner: crate::sinks::Config::BlackHole(crate::sinks::black_hole::Config::default()),
+                inputs: HashSet::from_iter([ComponentOutput {
+                    name: Cow::Owned(ComponentName::from("foo")),
+                    output: Cow::Owned(NamedOutput::Default),
+                }]),
+            },
+        );
+        let errors = config.validate().unwrap_err();
+        assert!(!errors.is_empty());
+    }
+}

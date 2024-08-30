@@ -5,8 +5,8 @@ use crate::components::name::ComponentName;
 use crate::components::output::NamedOutput;
 use crate::prelude::Receiver;
 
-mod add_fields;
-mod remove_fields;
+pub mod add_fields;
+pub mod remove_fields;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {

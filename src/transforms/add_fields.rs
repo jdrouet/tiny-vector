@@ -10,6 +10,7 @@ use crate::prelude::{Receiver, StringOrEnv};
 pub enum BuildError {}
 
 #[derive(Clone, Debug, serde::Deserialize)]
+#[cfg_attr(test, derive(Default))]
 pub struct Config {
     fields: IndexMap<String, StringOrEnv>,
 }
