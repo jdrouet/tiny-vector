@@ -188,25 +188,25 @@ mod tests {
     fn component_output_shouldnt_be_used_more_than_once() {
         let mut config = Config::default();
         config.sources.insert(
-            ComponentName::from("foo"),
+            ComponentName::new("foo"),
             crate::sources::Config::RandomLogs(crate::sources::random_logs::Config::default()),
         );
         config.sinks.insert(
-            ComponentName::from("bar"),
+            ComponentName::new("bar"),
             WithInputs {
                 inner: crate::sinks::Config::BlackHole(crate::sinks::black_hole::Config::default()),
                 inputs: HashSet::from_iter([ComponentOutput {
-                    name: Cow::Owned(ComponentName::from("foo")),
+                    name: Cow::Owned(ComponentName::new("foo")),
                     output: Cow::Owned(NamedOutput::Default),
                 }]),
             },
         );
         config.sinks.insert(
-            ComponentName::from("baz"),
+            ComponentName::new("baz"),
             WithInputs {
                 inner: crate::sinks::Config::BlackHole(crate::sinks::black_hole::Config::default()),
                 inputs: HashSet::from_iter([ComponentOutput {
-                    name: Cow::Owned(ComponentName::from("foo")),
+                    name: Cow::Owned(ComponentName::new("foo")),
                     output: Cow::Owned(NamedOutput::Default),
                 }]),
             },
@@ -216,13 +216,10 @@ mod tests {
             errors,
             vec![ValidationError::MultipleUseOfInput {
                 input: ComponentOutput {
-                    name: Cow::Owned(ComponentName::from("foo")),
+                    name: Cow::Owned(ComponentName::new("foo")),
                     output: Cow::Owned(NamedOutput::Default),
                 },
-                targets: HashSet::from_iter([
-                    ComponentName::from("baz"),
-                    ComponentName::from("bar")
-                ])
+                targets: HashSet::from_iter([ComponentName::new("baz"), ComponentName::new("bar")])
             }]
         );
     }
@@ -231,7 +228,7 @@ mod tests {
     fn component_without_input() {
         let mut config = Config::default();
         config.sinks.insert(
-            ComponentName::from("bar"),
+            ComponentName::new("bar"),
             WithInputs {
                 inner: crate::sinks::Config::BlackHole(crate::sinks::black_hole::Config::default()),
                 inputs: HashSet::new(),
@@ -242,10 +239,10 @@ mod tests {
             errors,
             vec![
                 ValidationError::NoInput {
-                    name: ComponentName::from("bar")
+                    name: ComponentName::new("bar")
                 },
                 ValidationError::OrphanComponent {
-                    name: ComponentName::from("bar")
+                    name: ComponentName::new("bar")
                 }
             ]
         );
@@ -255,19 +252,19 @@ mod tests {
     fn topology_with_orphan_components() {
         let mut config = Config::default();
         config.sources.insert(
-            ComponentName::from("foo"),
+            ComponentName::new("foo"),
             crate::sources::Config::RandomLogs(crate::sources::random_logs::Config::default()),
         );
         config.sources.insert(
-            ComponentName::from("orphan"),
+            ComponentName::new("orphan"),
             crate::sources::Config::RandomLogs(crate::sources::random_logs::Config::default()),
         );
         config.sinks.insert(
-            ComponentName::from("bar"),
+            ComponentName::new("bar"),
             WithInputs {
                 inner: crate::sinks::Config::BlackHole(crate::sinks::black_hole::Config::default()),
                 inputs: HashSet::from_iter([ComponentOutput {
-                    name: Cow::Owned(ComponentName::from("foo")),
+                    name: Cow::Owned(ComponentName::new("foo")),
                     output: Cow::Owned(NamedOutput::Default),
                 }]),
             },
@@ -276,7 +273,7 @@ mod tests {
         assert_eq!(
             errors,
             vec![ValidationError::OrphanComponent {
-                name: ComponentName::from("orphan")
+                name: ComponentName::new("orphan")
             }]
         );
     }

@@ -1,10 +1,37 @@
+use std::str::FromStr;
+
 use super::validate_name;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentName(String);
 
-impl<T: Into<String>> From<T> for ComponentName {
-    fn from(value: T) -> Self {
+impl TryFrom<String> for ComponentName {
+    type Error = &'static str;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if validate_name(&value) {
+            Ok(Self(value))
+        } else {
+            Err("invalid output name format")
+        }
+    }
+}
+
+impl FromStr for ComponentName {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if validate_name(value) {
+            Ok(Self(value.to_owned()))
+        } else {
+            Err("invalid component format")
+        }
+    }
+}
+
+#[cfg(test)]
+impl ComponentName {
+    pub fn new<T: Into<String>>(value: T) -> Self {
         Self(value.into())
     }
 }
@@ -33,11 +60,7 @@ impl<'de> serde::de::Deserialize<'de> for ComponentName {
         D: serde::Deserializer<'de>,
     {
         let value = String::deserialize(deserializer)?;
-        if validate_name(&value) {
-            Ok(Self(value))
-        } else {
-            Err(serde::de::Error::custom("invalid format"))
-        }
+        Self::from_str(&value).map_err(serde::de::Error::custom)
     }
 }
 

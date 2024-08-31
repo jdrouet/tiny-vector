@@ -138,7 +138,7 @@ mod tests {
         let collector = Collector::default().with_output(NamedOutput::Default, tx);
         let source = super::Source::new(address);
 
-        let _handle = source.run(&ComponentName::from("name"), collector).await;
+        let _handle = source.run(&ComponentName::new("name"), collector).await;
 
         let mut client = TcpStream::connect(address).await.unwrap();
         let event = crate::event::Event::Log(crate::event::log::EventLog::new("Hello World!"));
@@ -158,7 +158,7 @@ mod tests {
         let collector = Collector::default().with_output(NamedOutput::Default, tx);
         let source = super::Source::new(address);
 
-        let _handle = source.run(&ComponentName::from("name"), collector).await;
+        let _handle = source.run(&ComponentName::new("name"), collector).await;
 
         let mut client = TcpStream::connect(address).await.unwrap();
 
