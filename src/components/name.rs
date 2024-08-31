@@ -92,6 +92,6 @@ values.f123 = 42
     #[test_case::test_case("values.\"foo$bar\" = 32"; "with special characters")]
     fn shouldnt_deserialize(template: &str) {
         let error = toml::from_str::<Example>(template).unwrap_err();
-        assert!(error.to_string().contains("invalid format"));
+        assert!(error.to_string().contains("invalid component format"));
     }
 }
