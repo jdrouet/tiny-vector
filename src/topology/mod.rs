@@ -1,11 +1,10 @@
-use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::io::{Error, ErrorKind, Result as IOResult};
 use std::path::Path;
 
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
-use crate::components::output::{ComponentOutput, NamedOutput};
+use crate::components::output::ComponentOutput;
 use crate::prelude::{create_channel, Receiver};
 use crate::sinks::Sink;
 use crate::sources::Source;

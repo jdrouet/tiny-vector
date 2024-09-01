@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
 use crate::components::output::{ComponentWithOutputs, NamedOutput};
@@ -34,13 +32,13 @@ pub enum Config {
 }
 
 impl ComponentWithOutputs for Config {
-    fn outputs(&self) -> HashSet<NamedOutput> {
+    fn has_output(&self, output: &NamedOutput) -> bool {
         match self {
-            Self::RandomLogs(inner) => inner.outputs(),
+            Self::RandomLogs(inner) => inner.has_output(output),
             #[cfg(feature = "source-sysinfo")]
-            Self::Sysinfo(inner) => inner.outputs(),
+            Self::Sysinfo(inner) => inner.has_output(output),
             #[cfg(feature = "source-tcp-server")]
-            Self::TcpServer(inner) => inner.outputs(),
+            Self::TcpServer(inner) => inner.has_output(output),
         }
     }
 }

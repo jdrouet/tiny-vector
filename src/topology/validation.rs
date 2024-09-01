@@ -34,11 +34,11 @@ type RelationMap<'a> = HashMap<ComponentOutput<'a>, HashSet<&'a ComponentName>>;
 
 enum Node<'a> {
     Source {
-        outputs: HashSet<NamedOutput>,
+        config: &'a crate::sources::Config,
     },
     Transform {
         inputs: &'a HashSet<ComponentOutput<'a>>,
-        outputs: HashSet<NamedOutput>,
+        config: &'a crate::transforms::Config,
     },
     Sink {
         inputs: &'a HashSet<ComponentOutput<'a>>,
@@ -46,16 +46,14 @@ enum Node<'a> {
 }
 
 impl<'a> Node<'a> {
-    fn source(element: &'a crate::sources::Config) -> Self {
-        Self::Source {
-            outputs: element.outputs(),
-        }
+    fn source(config: &'a crate::sources::Config) -> Self {
+        Self::Source { config }
     }
 
-    fn transform(element: &'a WithInputs<crate::transforms::Config>) -> Self {
+    fn transform(config: &'a WithInputs<crate::transforms::Config>) -> Self {
         Self::Transform {
-            inputs: &element.inputs,
-            outputs: element.inner.outputs(),
+            inputs: &config.inputs,
+            config: &config.inner,
         }
     }
 
@@ -68,16 +66,16 @@ impl<'a> Node<'a> {
     fn inputs(&self) -> Option<&HashSet<ComponentOutput<'a>>> {
         match &self {
             Self::Sink { inputs } => Some(inputs),
-            Self::Transform { inputs, outputs: _ } => Some(inputs),
-            Self::Source { outputs: _ } => None,
+            Self::Transform { inputs, .. } => Some(inputs),
+            Self::Source { .. } => None,
         }
     }
 
-    fn outputs(&self) -> Option<&HashSet<NamedOutput>> {
+    fn has_output(&self, name: &NamedOutput) -> bool {
         match &self {
-            Self::Sink { inputs: _ } => None,
-            Self::Transform { inputs: _, outputs } => Some(outputs),
-            Self::Source { outputs } => Some(outputs),
+            Self::Sink { inputs: _ } => false,
+            Self::Transform { config, .. } => config.has_output(name),
+            Self::Source { config } => config.has_output(name),
         }
     }
 }
@@ -152,14 +150,7 @@ impl<'a> Graph<'a> {
                 });
                 continue;
             };
-            let Some(outputs) = node.outputs() else {
-                errors.push(ValidationError::OutputNotFound {
-                    name: output.to_owned_name(),
-                    output: output.to_owned_output(),
-                });
-                continue;
-            };
-            if !outputs.contains(output.output.as_ref()) {
+            if !node.has_output(output.output.as_ref()) {
                 errors.push(ValidationError::OutputNotFound {
                     name: output.to_owned_name(),
                     output: output.to_owned_output(),
@@ -188,8 +179,6 @@ impl<'a> Graph<'a> {
                 used_components.insert(output.to_owned_name());
             }
         }
-        println!("existing nodes: {:?}", self.nodes.keys());
-        println!("used nodes: {:?}", used_components);
         let existing_nodes: HashSet<ComponentName> =
             HashSet::from_iter(self.nodes.keys().map(|v| (*v).clone()));
         for name in existing_nodes.difference(&used_components) {

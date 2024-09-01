@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use indexmap::IndexMap;
 use tokio::sync::mpsc::error::SendError;
 use tracing::Instrument;
@@ -30,15 +28,19 @@ pub struct Config {
     fallback: Option<NamedOutput>,
 }
 
-impl ComponentWithOutputs for Config {
-    fn outputs(&self) -> HashSet<NamedOutput> {
-        let mut res = HashSet::from_iter(self.routes.keys().cloned());
-        if let Some(ref fb) = self.fallback {
-            res.insert(fb.clone());
+impl Config {
+    fn is_fallback(&self, output: &NamedOutput) -> bool {
+        if let Some(ref named) = self.fallback {
+            named.eq(output)
         } else {
-            res.insert(default_fallback());
+            default_fallback().eq(output)
         }
-        res
+    }
+}
+
+impl ComponentWithOutputs for Config {
+    fn has_output(&self, output: &NamedOutput) -> bool {
+        self.routes.keys().find(|name| (*name).eq(output)).is_some() || self.is_fallback(output)
     }
 }
 

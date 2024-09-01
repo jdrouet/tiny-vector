@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::collections::HashSet;
 use std::str::FromStr;
 
 use serde::Deserialize;
@@ -9,8 +8,8 @@ use super::validate_name;
 use crate::event::CowStr;
 
 pub trait ComponentWithOutputs {
-    fn outputs(&self) -> HashSet<NamedOutput> {
-        HashSet::from_iter([NamedOutput::Default])
+    fn has_output(&self, output: &NamedOutput) -> bool {
+        matches!(output, NamedOutput::Default)
     }
 }
 

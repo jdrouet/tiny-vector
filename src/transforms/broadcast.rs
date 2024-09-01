@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use tokio::sync::mpsc::error::SendError;
 use tracing::Instrument;
 
@@ -14,23 +12,12 @@ pub enum BuildError {}
 
 #[derive(Clone, Debug, serde::Deserialize)]
 #[cfg_attr(test, derive(Default))]
-pub struct Config {
-    /// The number of routes that will be created
-    /// By default, 10 routes will be created but can be overwritten.
-    count: Option<u8>,
-}
-
-impl Config {
-    fn count(&self) -> u8 {
-        self.count.unwrap_or(10)
-    }
-}
+pub struct Config {}
 
 impl ComponentWithOutputs for Config {
-    fn outputs(&self) -> HashSet<NamedOutput> {
-        HashSet::from_iter(
-            (0..self.count()).map(|index| NamedOutput::named(format!("output_{index:0<2}"))),
-        )
+    fn has_output(&self, _: &NamedOutput) -> bool {
+        // the broadcast transform accepts all the possible outputs
+        true
     }
 }
 

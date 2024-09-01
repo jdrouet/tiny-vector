@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
 use crate::components::output::{ComponentWithOutputs, NamedOutput};
@@ -31,11 +29,11 @@ pub enum Config {
 }
 
 impl ComponentWithOutputs for Config {
-    fn outputs(&self) -> HashSet<NamedOutput> {
+    fn has_output(&self, output: &NamedOutput) -> bool {
         match self {
-            Self::AddFields(inner) => inner.outputs(),
-            Self::RemoveFields(inner) => inner.outputs(),
-            Self::Route(inner) => inner.outputs(),
+            Self::AddFields(inner) => inner.has_output(output),
+            Self::RemoveFields(inner) => inner.has_output(output),
+            Self::Route(inner) => inner.has_output(output),
         }
     }
 }
