@@ -24,6 +24,7 @@ pub enum BuildError {
 
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
+#[cfg_attr(test, derive(derive_more::From))]
 pub enum Config {
     RandomLogs(self::random_logs::Config),
     #[cfg(feature = "source-sysinfo")]

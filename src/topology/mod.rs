@@ -1,10 +1,11 @@
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::io::{Error, ErrorKind, Result as IOResult};
 use std::path::Path;
 
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
-use crate::components::output::ComponentOutput;
+use crate::components::output::{ComponentOutput, NamedOutput};
 use crate::prelude::{create_channel, Receiver};
 use crate::sinks::Sink;
 use crate::sources::Source;
@@ -29,6 +30,32 @@ struct WithInputs<Inner> {
     #[serde(flatten)]
     inner: Inner,
     inputs: HashSet<ComponentOutput<'static>>,
+}
+
+#[cfg(test)]
+impl<Inner> WithInputs<Inner> {
+    pub fn new(inner: Inner) -> Self {
+        Self {
+            inner,
+            inputs: Default::default(),
+        }
+    }
+
+    pub fn with_default_input(mut self, name: &str) -> Self {
+        self.inputs.insert(ComponentOutput {
+            name: Cow::Owned(ComponentName::new(name)),
+            output: Cow::Owned(NamedOutput::Default),
+        });
+        self
+    }
+
+    pub fn with_named_input(mut self, name: &str, output: &str) -> Self {
+        self.inputs.insert(ComponentOutput {
+            name: Cow::Owned(ComponentName::new(name)),
+            output: Cow::Owned(NamedOutput::named(output.to_string())),
+        });
+        self
+    }
 }
 
 #[derive(Debug, Default, serde::Deserialize)]
@@ -87,6 +114,7 @@ impl Config {
     }
 }
 
+#[cfg_attr(test, derive(Default))]
 pub struct Topology {
     sources: HashMap<ComponentName, Source>,
     transforms: HashMap<ComponentName, WithInputs<Transform>>,
@@ -171,5 +199,67 @@ impl Instance {
                 eprintln!("something went wront while waiting for {name:?}: {err:?}");
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Config;
+    use crate::components::name::ComponentName;
+
+    async fn run_config(config: Config) {
+        let _topology = config.build().unwrap().run().await;
+        tokio::time::sleep(tokio::time::Duration::new(1, 0)).await;
+        // TODO make sure event came through
+    }
+
+    #[tokio::test]
+    async fn should_run_with_simple_config() {
+        let mut root = Config::default();
+        root.sources.insert(
+            ComponentName::new("generator"),
+            crate::sources::random_logs::Config::default().into(),
+        );
+        root.transforms.insert(
+            ComponentName::new("first"),
+            crate::topology::WithInputs::new(crate::transforms::route::Config::default().into())
+                .with_default_input("generator"),
+        );
+        root.transforms.insert(
+            ComponentName::new("second"),
+            crate::topology::WithInputs::new(crate::transforms::route::Config::default().into())
+                .with_named_input("first", "dropped"),
+        );
+        root.sinks.insert(
+            ComponentName::new("output"),
+            crate::topology::WithInputs::new(crate::sinks::black_hole::Config::default().into())
+                .with_named_input("second", "dropped"),
+        );
+        run_config(root).await;
+    }
+
+    #[tokio::test]
+    async fn should_run_config_in_weird_order() {
+        let mut root = Config::default();
+        root.sources.insert(
+            ComponentName::new("generator"),
+            crate::sources::random_logs::Config::default().into(),
+        );
+        root.transforms.insert(
+            ComponentName::new("second"),
+            crate::topology::WithInputs::new(crate::transforms::route::Config::default().into())
+                .with_named_input("first", "dropped"),
+        );
+        root.transforms.insert(
+            ComponentName::new("first"),
+            crate::topology::WithInputs::new(crate::transforms::route::Config::default().into())
+                .with_default_input("generator"),
+        );
+        root.sinks.insert(
+            ComponentName::new("output"),
+            crate::topology::WithInputs::new(crate::sinks::black_hole::Config::default().into())
+                .with_named_input("second", "dropped"),
+        );
+        run_config(root).await;
     }
 }

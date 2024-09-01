@@ -22,6 +22,7 @@ pub enum BuildError {
 
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
+#[cfg_attr(test, derive(derive_more::From))]
 pub enum Config {
     AddFields(self::add_fields::Config),
     RemoveFields(self::remove_fields::Config),

@@ -19,6 +19,7 @@ pub enum BuildError {
 
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
+#[cfg_attr(test, derive(derive_more::From))]
 pub enum Config {
     BlackHole(self::black_hole::Config),
     Console(self::console::Config),
