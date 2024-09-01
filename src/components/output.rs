@@ -26,7 +26,6 @@ impl NamedOutput {
     }
 }
 
-#[cfg(test)]
 impl NamedOutput {
     pub fn named<N: Into<CowStr>>(name: N) -> Self {
         Self::Named(name.into())

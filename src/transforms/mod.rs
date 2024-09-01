@@ -6,6 +6,7 @@ use crate::components::output::{ComponentWithOutputs, NamedOutput};
 use crate::prelude::Receiver;
 
 pub mod add_fields;
+pub mod broadcast;
 pub mod condition;
 pub mod remove_fields;
 pub mod route;

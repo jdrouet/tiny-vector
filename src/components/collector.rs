@@ -24,6 +24,10 @@ impl Collector {
         }
     }
 
+    pub fn senders(&self) -> impl Iterator<Item = &Sender> {
+        self.default.iter().chain(self.others.values())
+    }
+
     #[cfg(test)]
     pub(crate) fn with_output(mut self, named: NamedOutput, sender: Sender) -> Self {
         self.add_output(named, sender);
@@ -52,6 +56,13 @@ impl Collector {
                 None => tracing::trace!("no {inner:?} output, discarding event"),
             },
         };
+        Ok(())
+    }
+
+    pub async fn send_all(&self, event: Event) -> Result<(), SendError<Event>> {
+        for sender in self.senders() {
+            sender.send(event.clone()).await?;
+        }
         Ok(())
     }
 }
