@@ -40,7 +40,7 @@ impl Config {
 
 impl ComponentWithOutputs for Config {
     fn has_output(&self, output: &NamedOutput) -> bool {
-        self.routes.keys().find(|name| (*name).eq(output)).is_some() || self.is_fallback(output)
+        self.routes.keys().any(|name| (*name).eq(output)) || self.is_fallback(output)
     }
 }
 

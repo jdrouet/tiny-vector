@@ -41,6 +41,10 @@ impl<Inner> WithInputs<Inner> {
     }
 
     pub fn with_default_input(mut self, name: &str) -> Self {
+        use std::borrow::Cow;
+
+        use crate::components::output::NamedOutput;
+
         self.inputs.insert(ComponentOutput {
             name: Cow::Owned(ComponentName::new(name)),
             output: Cow::Owned(NamedOutput::Default),
@@ -49,6 +53,10 @@ impl<Inner> WithInputs<Inner> {
     }
 
     pub fn with_named_input(mut self, name: &str, output: &str) -> Self {
+        use std::borrow::Cow;
+
+        use crate::components::output::NamedOutput;
+
         self.inputs.insert(ComponentOutput {
             name: Cow::Owned(ComponentName::new(name)),
             output: Cow::Owned(NamedOutput::named(output.to_string())),
