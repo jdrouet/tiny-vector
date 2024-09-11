@@ -10,6 +10,7 @@ source-tcp-server = ["tokio/net"]
 sink-datadog-logs = ["dep:reqwest"]
 
 [dependencies]
+derive_more = { version = "1.0", default-features = false, features = ["from"] }
 indexmap = { version = "2.4", features = ["serde"] }
 once_cell = "1.19.0"
 regex = { version = "1.10" }

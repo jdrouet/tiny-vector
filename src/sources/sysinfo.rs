@@ -127,91 +127,92 @@ impl Source {
         self.system.refresh_specifics(self.specifics);
     }
 
-    fn global_cpu_usage(&self, buffer: &mut VecDeque<EventMetric>) {
+    fn global_cpu_usage(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.global_cpu_usage();
-        let event = EventMetric::new(NAMESPACE, "global-cpu-usage", value as f64);
+        let event = EventMetric::new(instant, NAMESPACE, "global-cpu-usage", value as f64);
         buffer.push_back(event);
     }
 
-    fn cpu_usage(&self, buffer: &mut VecDeque<EventMetric>) {
+    fn cpu_usage(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         for cpu in self.system.cpus() {
             let value = cpu.cpu_usage();
-            let event = EventMetric::new(NAMESPACE, "cpu-usage", value as f64)
+            let event = EventMetric::new(instant, NAMESPACE, "cpu-usage", value as f64)
                 .with_tag("name", cpu.name().to_owned());
             buffer.push_back(event);
         }
     }
 
-    fn cpu_frequency(&self, buffer: &mut VecDeque<EventMetric>) {
+    fn cpu_frequency(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         for cpu in self.system.cpus() {
             let value = cpu.frequency();
-            let event = EventMetric::new(NAMESPACE, "cpu-frequency", value as f64)
+            let event = EventMetric::new(instant, NAMESPACE, "cpu-frequency", value as f64)
                 .with_tag("name", cpu.name().to_owned());
             buffer.push_back(event);
         }
     }
 
-    fn free_swap(&self, buffer: &mut VecDeque<EventMetric>) {
+    fn free_swap(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.free_swap();
-        let event = EventMetric::new(NAMESPACE, "free-swap", value as f64);
+        let event = EventMetric::new(instant, NAMESPACE, "free-swap", value as f64);
         buffer.push_back(event);
     }
 
-    fn used_swap(&self, buffer: &mut VecDeque<EventMetric>) {
+    fn used_swap(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.used_swap();
-        let event = EventMetric::new(NAMESPACE, "used-swap", value as f64);
+        let event = EventMetric::new(instant, NAMESPACE, "used-swap", value as f64);
         buffer.push_back(event);
     }
 
-    fn total_swap(&self, buffer: &mut VecDeque<EventMetric>) {
+    fn total_swap(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.total_swap();
-        let event = EventMetric::new(NAMESPACE, "total-swap", value as f64);
+        let event = EventMetric::new(instant, NAMESPACE, "total-swap", value as f64);
         buffer.push_back(event);
     }
 
-    fn available_memory(&self, buffer: &mut VecDeque<EventMetric>) {
+    fn available_memory(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.available_memory();
-        let event = EventMetric::new(NAMESPACE, "available-memory", value as f64);
+        let event = EventMetric::new(instant, NAMESPACE, "available-memory", value as f64);
         buffer.push_back(event);
     }
 
-    fn free_memory(&self, buffer: &mut VecDeque<EventMetric>) {
+    fn free_memory(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.free_memory();
-        let event = EventMetric::new(NAMESPACE, "free-memory", value as f64);
+        let event = EventMetric::new(instant, NAMESPACE, "free-memory", value as f64);
         buffer.push_back(event);
     }
 
-    fn used_memory(&self, buffer: &mut VecDeque<EventMetric>) {
+    fn used_memory(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.used_memory();
-        let event = EventMetric::new(NAMESPACE, "used-memory", value as f64);
+        let event = EventMetric::new(instant, NAMESPACE, "used-memory", value as f64);
         buffer.push_back(event);
     }
 
-    fn total_memory(&self, buffer: &mut VecDeque<EventMetric>) {
+    fn total_memory(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.total_memory();
-        let event = EventMetric::new(NAMESPACE, "total-memory", value as f64);
+        let event = EventMetric::new(instant, NAMESPACE, "total-memory", value as f64);
         buffer.push_back(event);
     }
 
     fn iterate(&mut self, buffer: &mut VecDeque<EventMetric>) {
         self.reload();
+        let instant = crate::helper::now();
         if self.config.cpu.usage {
-            self.global_cpu_usage(buffer);
-            self.cpu_usage(buffer);
+            self.global_cpu_usage(instant, buffer);
+            self.cpu_usage(instant, buffer);
         }
         if self.config.cpu.frequency {
-            self.cpu_frequency(buffer);
+            self.cpu_frequency(instant, buffer);
         }
         if self.config.memory.swap {
-            self.free_swap(buffer);
-            self.used_swap(buffer);
-            self.total_swap(buffer);
+            self.free_swap(instant, buffer);
+            self.used_swap(instant, buffer);
+            self.total_swap(instant, buffer);
         }
         if self.config.memory.ram {
-            self.available_memory(buffer);
-            self.free_memory(buffer);
-            self.used_memory(buffer);
-            self.total_memory(buffer);
+            self.available_memory(instant, buffer);
+            self.free_memory(instant, buffer);
+            self.used_memory(instant, buffer);
+            self.total_memory(instant, buffer);
         }
     }
 

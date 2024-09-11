@@ -3,6 +3,7 @@ use tracing::Instrument;
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
 use crate::components::output::ComponentWithOutputs;
+use crate::event::log::EventLogAttribute;
 
 #[derive(Debug, thiserror::Error)]
 pub struct BuildError;
@@ -23,6 +24,10 @@ fn generate() -> crate::event::Event {
     crate::event::log::EventLog::new("Hello World!")
         .with_attribute("hostname", "fake-server")
         .with_attribute("ddsource", "tiny-vector")
+        .with_attribute(
+            "timestamp",
+            EventLogAttribute::UInteger(crate::helper::now()),
+        )
         .into()
 }
 

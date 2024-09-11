@@ -55,17 +55,37 @@ pub enum EventMetricValue {
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct EventMetric {
+    #[serde(default = "crate::helper::now")]
+    pub timestamp: u64,
     #[serde(flatten)]
     pub header: EventMetricHeader,
     pub value: f64,
 }
 
 impl EventMetric {
-    pub fn new<N: Into<CowStr>, M: Into<CowStr>>(namespace: N, name: M, value: f64) -> Self {
+    pub fn new<N: Into<CowStr>, M: Into<CowStr>>(
+        timestamp: u64,
+        namespace: N,
+        name: M,
+        value: f64,
+    ) -> Self {
         Self {
+            timestamp,
             header: EventMetricHeader::new(namespace, name),
             value,
         }
+    }
+
+    pub fn with_tags_mutation<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(&mut EventMetricTags),
+    {
+        callback(&mut self.header.tags);
+        self
+    }
+
+    pub fn tags_mut(&mut self) -> &mut EventMetricTags {
+        &mut self.header.tags
     }
 
     pub fn with_tag<N: Into<CowStr>, V: Into<CowStr>>(mut self, name: N, value: V) -> Self {

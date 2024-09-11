@@ -93,7 +93,7 @@ mod tests {
         transform
             .handle(
                 &collector,
-                crate::event::metric::EventMetric::new("foo", "bar", 42.0)
+                crate::event::metric::EventMetric::new(crate::helper::now(), "foo", "bar", 42.0)
                     .with_tag("hostname", "fake-server")
                     .into(),
             )
