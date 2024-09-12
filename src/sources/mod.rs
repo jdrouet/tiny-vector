@@ -22,25 +22,13 @@ pub enum BuildError {
 
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
-#[cfg_attr(test, derive(derive_more::From))]
+#[enum_dispatch::enum_dispatch(ComponentWithOutputs)]
 pub enum Config {
     RandomLogs(self::random_logs::Config),
     #[cfg(feature = "source-sysinfo")]
     Sysinfo(self::sysinfo::Config),
     #[cfg(feature = "source-tcp-server")]
     TcpServer(self::tcp_server::Config),
-}
-
-impl ComponentWithOutputs for Config {
-    fn has_output(&self, output: &NamedOutput) -> bool {
-        match self {
-            Self::RandomLogs(inner) => inner.has_output(output),
-            #[cfg(feature = "source-sysinfo")]
-            Self::Sysinfo(inner) => inner.has_output(output),
-            #[cfg(feature = "source-tcp-server")]
-            Self::TcpServer(inner) => inner.has_output(output),
-        }
-    }
 }
 
 impl Config {

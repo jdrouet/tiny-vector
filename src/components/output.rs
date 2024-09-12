@@ -7,6 +7,7 @@ use super::name::ComponentName;
 use super::validate_name;
 use crate::event::CowStr;
 
+#[enum_dispatch::enum_dispatch]
 pub trait ComponentWithOutputs {
     fn has_output(&self, output: &NamedOutput) -> bool {
         matches!(output, NamedOutput::Default)

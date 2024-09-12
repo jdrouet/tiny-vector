@@ -33,9 +33,9 @@ struct WithInputs<Inner> {
 
 #[cfg(test)]
 impl<Inner> WithInputs<Inner> {
-    pub fn new(inner: Inner) -> Self {
+    pub fn new<T: Into<Inner>>(inner: T) -> Self {
         Self {
-            inner,
+            inner: inner.into(),
             inputs: Default::default(),
         }
     }
@@ -229,17 +229,17 @@ mod tests {
         );
         root.transforms.insert(
             ComponentName::new("first"),
-            crate::topology::WithInputs::new(crate::transforms::route::Config::default().into())
+            crate::topology::WithInputs::new(crate::transforms::route::Config::default())
                 .with_default_input("generator"),
         );
         root.transforms.insert(
             ComponentName::new("second"),
-            crate::topology::WithInputs::new(crate::transforms::route::Config::default().into())
+            crate::topology::WithInputs::new(crate::transforms::route::Config::default())
                 .with_named_input("first", "dropped"),
         );
         root.sinks.insert(
             ComponentName::new("output"),
-            crate::topology::WithInputs::new(crate::sinks::black_hole::Config::default().into())
+            crate::topology::WithInputs::new(crate::sinks::black_hole::Config::default())
                 .with_named_input("second", "dropped"),
         );
         run_config(root).await;
@@ -254,17 +254,17 @@ mod tests {
         );
         root.transforms.insert(
             ComponentName::new("second"),
-            crate::topology::WithInputs::new(crate::transforms::route::Config::default().into())
+            crate::topology::WithInputs::new(crate::transforms::route::Config::default())
                 .with_named_input("first", "dropped"),
         );
         root.transforms.insert(
             ComponentName::new("first"),
-            crate::topology::WithInputs::new(crate::transforms::route::Config::default().into())
+            crate::topology::WithInputs::new(crate::transforms::route::Config::default())
                 .with_default_input("generator"),
         );
         root.sinks.insert(
             ComponentName::new("output"),
-            crate::topology::WithInputs::new(crate::sinks::black_hole::Config::default().into())
+            crate::topology::WithInputs::new(crate::sinks::black_hole::Config::default())
                 .with_named_input("second", "dropped"),
         );
         run_config(root).await;

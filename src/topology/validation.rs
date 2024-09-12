@@ -72,7 +72,7 @@ impl<'a> Node<'a> {
     }
 
     fn has_output(&self, name: &NamedOutput) -> bool {
-        match &self {
+        match self {
             Self::Sink { inputs: _ } => false,
             Self::Transform { config, .. } => config.has_output(name),
             Self::Source { config } => config.has_output(name),

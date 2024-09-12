@@ -25,6 +25,20 @@ impl From<metric::EventMetric> for Event {
 }
 
 impl Event {
+    pub fn as_event_log(&self) -> Option<&log::EventLog> {
+        match self {
+            Self::Log(ref inner) => Some(inner),
+            _ => None,
+        }
+    }
+
+    pub fn as_event_metric(&self) -> Option<&metric::EventMetric> {
+        match self {
+            Self::Metric(ref inner) => Some(inner),
+            _ => None,
+        }
+    }
+
     pub fn into_event_log(self) -> Option<log::EventLog> {
         match self {
             Self::Log(inner) => Some(inner),

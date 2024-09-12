@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 use tokio::sync::mpsc::error::SendError;
 use tracing::Instrument;
 
-use super::condition::Condition;
+use super::condition::{Condition, Evaluate};
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
 use crate::components::output::{ComponentWithOutputs, NamedOutput};
@@ -120,8 +120,8 @@ mod tests {
         let logs_output = NamedOutput::named("logs");
         let config = super::Config {
             routes: IndexMap::from_iter([
-                (metrics_output.clone(), Condition::IsMetric),
-                (logs_output.clone(), Condition::IsLog),
+                (metrics_output.clone(), Condition::is_metric()),
+                (logs_output.clone(), Condition::is_log()),
             ]),
             fallback: None,
         };
@@ -159,7 +159,7 @@ mod tests {
         let metrics_output = NamedOutput::named("metrics");
         let fallback = NamedOutput::named("fallback");
         let config = super::Config {
-            routes: IndexMap::from_iter([(metrics_output.clone(), Condition::IsMetric)]),
+            routes: IndexMap::from_iter([(metrics_output.clone(), Condition::is_metric())]),
             fallback: Some(fallback.clone()),
         };
         let transform = config.build().unwrap();
@@ -196,7 +196,7 @@ mod tests {
         let metrics_output = NamedOutput::named("metrics");
         let fallback = NamedOutput::named("dropped");
         let config = super::Config {
-            routes: IndexMap::from_iter([(metrics_output.clone(), Condition::IsMetric)]),
+            routes: IndexMap::from_iter([(metrics_output.clone(), Condition::is_metric())]),
             fallback: None,
         };
         let transform = config.build().unwrap();
@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn should_break_the_build_to_have_conflicts() {
         let config = super::Config {
-            routes: IndexMap::from_iter([(NamedOutput::named("dropped"), Condition::IsMetric)]),
+            routes: IndexMap::from_iter([(NamedOutput::named("dropped"), Condition::is_metric())]),
             fallback: None,
         };
         let err = config.build().unwrap_err();
