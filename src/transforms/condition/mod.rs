@@ -40,9 +40,7 @@ pub struct And {
 
 impl Evaluate for And {
     fn evaluate(&self, event: &Event) -> bool {
-        self.value
-            .iter()
-            .fold(true, |res, c| res && c.evaluate(event))
+        self.value.iter().all(|c| c.evaluate(event))
     }
 }
 
@@ -53,9 +51,7 @@ pub struct Or {
 
 impl Evaluate for Or {
     fn evaluate(&self, event: &Event) -> bool {
-        self.value
-            .iter()
-            .fold(false, |res, c| res || c.evaluate(event))
+        self.value.iter().any(|c| c.evaluate(event))
     }
 }
 
