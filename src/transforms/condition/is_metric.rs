@@ -12,6 +12,6 @@ pub struct Condition;
 
 impl super::Evaluate for Condition {
     fn evaluate(&self, event: &crate::event::Event) -> bool {
-        matches!(event, crate::event::Event::Log(_))
+        matches!(event, crate::event::Event::Metric(_))
     }
 }

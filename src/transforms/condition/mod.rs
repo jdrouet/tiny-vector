@@ -82,6 +82,9 @@ impl Condition {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::event::log::EventLog;
+    use crate::event::metric::EventMetric;
+    use crate::event::Event;
 
     #[test]
     fn should_evaluate_and() {
@@ -94,14 +97,13 @@ mod tests {
         }))
         .unwrap();
         assert!(matches!(cond, Condition::And(_)));
-        assert!(
-            !cond.evaluate(&crate::event::Event::Log(crate::event::log::EventLog::new(
-                "hello world"
-            )))
-        );
-        assert!(!cond.evaluate(&crate::event::Event::Metric(
-            crate::event::metric::EventMetric::new(crate::helper::now(), "foo", "bar", 42.0)
-        )));
+        assert!(!cond.evaluate(&Event::Log(EventLog::new("hello world"))));
+        assert!(!cond.evaluate(&Event::Metric(EventMetric::new(
+            crate::helper::now(),
+            "foo",
+            "bar",
+            42.0
+        ))));
     }
 
     #[test]
@@ -115,14 +117,13 @@ mod tests {
         }))
         .unwrap();
         assert!(matches!(cond, Condition::Or(_)));
-        assert!(
-            cond.evaluate(&crate::event::Event::Log(crate::event::log::EventLog::new(
-                "hello world"
-            )))
-        );
-        assert!(cond.evaluate(&crate::event::Event::Metric(
-            crate::event::metric::EventMetric::new(crate::helper::now(), "foo", "bar", 42.0)
-        )));
+        assert!(cond.evaluate(&Event::Log(EventLog::new("hello world"))));
+        assert!(cond.evaluate(&Event::Metric(EventMetric::new(
+            crate::helper::now(),
+            "foo",
+            "bar",
+            42.0
+        ))));
     }
 
     #[test]
@@ -132,14 +133,13 @@ mod tests {
         }))
         .unwrap();
         assert!(matches!(cond, Condition::IsLog(_)));
-        assert!(
-            cond.evaluate(&crate::event::Event::Log(crate::event::log::EventLog::new(
-                "hello world"
-            )))
-        );
-        assert!(!cond.evaluate(&crate::event::Event::Metric(
-            crate::event::metric::EventMetric::new(crate::helper::now(), "foo", "bar", 42.0)
-        )));
+        assert!(cond.evaluate(&Event::Log(EventLog::new("hello world"))));
+        assert!(!cond.evaluate(&Event::Metric(EventMetric::new(
+            crate::helper::now(),
+            "foo",
+            "bar",
+            42.0
+        ))));
     }
 
     #[test]
@@ -149,13 +149,12 @@ mod tests {
         }))
         .unwrap();
         assert!(matches!(cond, Condition::IsMetric(_)));
-        assert!(
-            !cond.evaluate(&crate::event::Event::Log(crate::event::log::EventLog::new(
-                "hello world"
-            )))
-        );
-        assert!(cond.evaluate(&crate::event::Event::Metric(
-            crate::event::metric::EventMetric::new(crate::helper::now(), "foo", "bar", 42.0)
-        )));
+        assert!(!cond.evaluate(&Event::Log(EventLog::new("hello world"))));
+        assert!(cond.evaluate(&Event::Metric(EventMetric::new(
+            crate::helper::now(),
+            "foo",
+            "bar",
+            42.0
+        ))));
     }
 }
