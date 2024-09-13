@@ -1,8 +1,10 @@
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Config;
 
-impl Config {
-    pub fn build(self) -> Condition {
+impl super::prelude::Builder for Config {
+    type Output = Condition;
+
+    fn build(self) -> Condition {
         Condition
     }
 }
@@ -10,7 +12,7 @@ impl Config {
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Condition;
 
-impl super::Evaluate for Condition {
+impl super::prelude::Evaluate for Condition {
     fn evaluate(&self, event: &crate::event::Event) -> bool {
         matches!(event, crate::event::Event::Metric(_))
     }

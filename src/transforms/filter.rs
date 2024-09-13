@@ -1,7 +1,8 @@
 use tokio::sync::mpsc::error::SendError;
 use tracing::Instrument;
 
-use super::condition::{Condition, Evaluate};
+use super::condition::prelude::Evaluate;
+use super::condition::Condition;
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
 use crate::components::output::{ComponentWithOutputs, NamedOutput};
@@ -17,7 +18,7 @@ fn default_fallback() -> NamedOutput {
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Config {
-    condition: Condition,
+    condition: crate::transforms::condition::Config,
     /// Route being used when condition is not matching.
     fallback: Option<NamedOutput>,
 }
@@ -42,7 +43,7 @@ impl Config {
     pub fn build(self) -> Result<Transform, BuildError> {
         let fallback = self.fallback.unwrap_or_else(default_fallback);
         Ok(Transform {
-            condition: self.condition,
+            condition: self.condition.build(),
             fallback,
         })
     }
@@ -95,14 +96,14 @@ mod tests {
     use crate::components::collector::Collector;
     use crate::components::output::NamedOutput;
     use crate::prelude::create_channel;
-    use crate::transforms::condition::Condition;
+    use crate::transforms::condition;
 
     #[tokio::test]
     async fn should_route_events_properly() {
         let default_output = NamedOutput::default();
         let dropped_output = NamedOutput::named("dropped");
         let config = super::Config {
-            condition: Condition::is_metric(),
+            condition: condition::Config::is_metric(),
             fallback: None,
         };
         let transform = config.build().unwrap();

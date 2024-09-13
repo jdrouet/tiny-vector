@@ -2,7 +2,8 @@ use indexmap::IndexMap;
 use tokio::sync::mpsc::error::SendError;
 use tracing::Instrument;
 
-use super::condition::{Condition, Evaluate};
+use super::condition::prelude::Evaluate;
+use super::condition::Condition;
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
 use crate::components::output::{ComponentWithOutputs, NamedOutput};
@@ -22,7 +23,7 @@ fn default_fallback() -> NamedOutput {
 #[derive(Clone, Debug, serde::Deserialize)]
 #[cfg_attr(test, derive(Default))]
 pub struct Config {
-    routes: IndexMap<NamedOutput, Condition>,
+    routes: IndexMap<NamedOutput, crate::transforms::condition::Config>,
     /// Route being used when no route condition is matching.
     /// The default being the "dropped" route.
     fallback: Option<NamedOutput>,
@@ -54,7 +55,7 @@ impl Config {
                 routes: self
                     .routes
                     .into_iter()
-                    .map(|(name, condition)| (condition, name))
+                    .map(|(name, condition)| (condition.build(), name))
                     .collect(),
                 fallback,
             })
@@ -112,7 +113,7 @@ mod tests {
     use crate::components::collector::Collector;
     use crate::components::output::NamedOutput;
     use crate::prelude::create_channel;
-    use crate::transforms::condition::Condition;
+    use crate::transforms::condition;
 
     #[tokio::test]
     async fn should_route_events_properly() {
@@ -120,8 +121,8 @@ mod tests {
         let logs_output = NamedOutput::named("logs");
         let config = super::Config {
             routes: IndexMap::from_iter([
-                (metrics_output.clone(), Condition::is_metric()),
-                (logs_output.clone(), Condition::is_log()),
+                (metrics_output.clone(), condition::Config::is_metric()),
+                (logs_output.clone(), condition::Config::is_log()),
             ]),
             fallback: None,
         };
@@ -159,7 +160,7 @@ mod tests {
         let metrics_output = NamedOutput::named("metrics");
         let fallback = NamedOutput::named("fallback");
         let config = super::Config {
-            routes: IndexMap::from_iter([(metrics_output.clone(), Condition::is_metric())]),
+            routes: IndexMap::from_iter([(metrics_output.clone(), condition::Config::is_metric())]),
             fallback: Some(fallback.clone()),
         };
         let transform = config.build().unwrap();
@@ -196,7 +197,7 @@ mod tests {
         let metrics_output = NamedOutput::named("metrics");
         let fallback = NamedOutput::named("dropped");
         let config = super::Config {
-            routes: IndexMap::from_iter([(metrics_output.clone(), Condition::is_metric())]),
+            routes: IndexMap::from_iter([(metrics_output.clone(), condition::Config::is_metric())]),
             fallback: None,
         };
         let transform = config.build().unwrap();
@@ -231,7 +232,10 @@ mod tests {
     #[test]
     fn should_break_the_build_to_have_conflicts() {
         let config = super::Config {
-            routes: IndexMap::from_iter([(NamedOutput::named("dropped"), Condition::is_metric())]),
+            routes: IndexMap::from_iter([(
+                NamedOutput::named("dropped"),
+                condition::Config::is_metric(),
+            )]),
             fallback: None,
         };
         let err = config.build().unwrap_err();
