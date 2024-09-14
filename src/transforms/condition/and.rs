@@ -5,11 +5,16 @@ pub struct Config {
 
 impl super::prelude::Builder for Config {
     type Output = Condition;
+    type Error = super::BuildError;
 
-    fn build(self) -> Condition {
-        Condition {
-            value: self.value.into_iter().map(|item| item.build()).collect(),
-        }
+    fn build(self) -> Result<Condition, Self::Error> {
+        Ok(Condition {
+            value: self
+                .value
+                .into_iter()
+                .map(|item| item.build())
+                .collect::<Result<Vec<_>, super::BuildError>>()?,
+        })
     }
 }
 

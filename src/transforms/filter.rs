@@ -10,7 +10,10 @@ use crate::event::Event;
 use crate::prelude::Receiver;
 
 #[derive(Debug, thiserror::Error)]
-pub enum BuildError {}
+pub enum BuildError {
+    #[error(transparent)]
+    ConditionFailed(super::condition::BuildError),
+}
 
 fn default_fallback() -> NamedOutput {
     NamedOutput::Named("dropped".into())
@@ -43,7 +46,10 @@ impl Config {
     pub fn build(self) -> Result<Transform, BuildError> {
         let fallback = self.fallback.unwrap_or_else(default_fallback);
         Ok(Transform {
-            condition: self.condition.build(),
+            condition: self
+                .condition
+                .build()
+                .map_err(BuildError::ConditionFailed)?,
             fallback,
         })
     }

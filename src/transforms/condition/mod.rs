@@ -10,6 +10,9 @@ mod is_metric;
 mod not;
 mod or;
 
+#[derive(Debug, thiserror::Error)]
+pub enum BuildError {}
+
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Config {
@@ -34,16 +37,16 @@ impl Config {
 }
 
 impl Config {
-    pub fn build(self) -> Condition {
-        match self {
-            Self::And(inner) => Condition::And(inner.build()),
-            Self::HasAttribute(inner) => Condition::HasAttribute(inner.build()),
-            Self::HasTag(inner) => Condition::HasTag(inner.build()),
-            Self::IsLog(inner) => Condition::IsLog(inner.build()),
-            Self::IsMetric(inner) => Condition::IsMetric(inner.build()),
-            Self::Not(inner) => Condition::Not(inner.build()),
-            Self::Or(inner) => Condition::Or(inner.build()),
-        }
+    pub fn build(self) -> Result<Condition, BuildError> {
+        Ok(match self {
+            Self::And(inner) => Condition::And(inner.build()?),
+            Self::HasAttribute(inner) => Condition::HasAttribute(inner.build()?),
+            Self::HasTag(inner) => Condition::HasTag(inner.build()?),
+            Self::IsLog(inner) => Condition::IsLog(inner.build()?),
+            Self::IsMetric(inner) => Condition::IsMetric(inner.build()?),
+            Self::Not(inner) => Condition::Not(inner.build()?),
+            Self::Or(inner) => Condition::Or(inner.build()?),
+        })
     }
 }
 
@@ -104,9 +107,54 @@ mod tests {
         &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", 12.34))];
         "has_tag condition"
     )]
+    #[test_case::test_case(
+        r#"{"type":"has_tag", "name": "foo", "check": { "type": "exists" } }"#,
+        &[Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "bar"))],
+        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", 12.34))];
+        "has_tag condition with check exists"
+    )]
+    #[test_case::test_case(
+        r#"{"type":"has_tag", "name": "foo", "check": { "type": "equals", "value": "bar" }}"#,
+        &[Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "bar"))],
+        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", 12.34))];
+        "has_tag condition with check equals"
+    )]
+    #[test_case::test_case(
+        r#"{"type":"has_tag", "name": "foo", "check": { "type": "starts_with", "value": "bar" }}"#,
+        &[Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "barzoo"))],
+        &[
+            Event::Log(EventLog::new("hello world")),
+            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34)),
+            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "baz")),
+        ];
+        "has_tag condition with check starts_with"
+    )]
+    #[test_case::test_case(
+        r#"{"type":"has_tag", "name": "foo", "check": { "type": "ends_with", "value": "bar" }}"#,
+        &[Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "zoobar"))],
+        &[
+            Event::Log(EventLog::new("hello world")),
+            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34)),
+            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "zoobaz")),
+        ];
+        "has_tag condition with check ends_with"
+    )]
+    #[test_case::test_case(
+        r#"{"type":"has_tag", "name": "foo", "check": { "type": "matches", "regex": "^H[3e]ll[o0]$" }}"#,
+        &[
+            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "Hello")),
+            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "H3ll0")),
+        ],
+        &[
+            Event::Log(EventLog::new("hello world")),
+            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34)),
+            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "hell")),
+        ];
+        "has_tag condition with check matches"
+    )]
     fn should_check_condition(condition: &str, valid: &[Event], invalid: &[Event]) {
         let cond: Config = serde_json::from_str(condition).unwrap();
-        let cond = cond.build();
+        let cond = cond.build().unwrap();
         for item in valid {
             assert!(cond.evaluate(item), "should validate {item:?}");
         }

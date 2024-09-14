@@ -3,9 +3,10 @@ pub struct Config;
 
 impl super::prelude::Builder for Config {
     type Output = Condition;
+    type Error = super::BuildError;
 
-    fn build(self) -> Condition {
-        Condition
+    fn build(self) -> Result<Self::Output, Self::Error> {
+        Ok(Condition)
     }
 }
 

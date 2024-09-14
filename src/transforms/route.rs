@@ -12,6 +12,8 @@ use crate::prelude::Receiver;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
+    #[error(transparent)]
+    ConditionFailed(super::condition::BuildError),
     #[error("the fallback route {name} is conflicting with the defined routes")]
     FallbackRouteConflict { name: NamedOutput },
 }
@@ -55,8 +57,13 @@ impl Config {
                 routes: self
                     .routes
                     .into_iter()
-                    .map(|(name, condition)| (condition.build(), name))
-                    .collect(),
+                    .map(|(name, condition)| {
+                        condition
+                            .build()
+                            .map(|cond| (cond, name))
+                            .map_err(BuildError::ConditionFailed)
+                    })
+                    .collect::<Result<_, BuildError>>()?,
                 fallback,
             })
         }
