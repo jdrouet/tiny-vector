@@ -68,7 +68,7 @@ async fn persist_event_metric(
     .bind(event.header.name.namespace)
     .bind(event.header.name.name)
     .bind(Json(event.header.tags))
-    .bind(&event.value)
+    .bind(Json(event.value))
     .execute(&mut *connection)
     .await?;
     Ok(())

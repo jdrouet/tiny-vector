@@ -47,9 +47,9 @@ impl EventMetricHeader {
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "kebab-case", tag = "type")]
+#[serde(rename_all = "kebab-case", tag = "type", content = "value")]
 pub enum EventMetricValue {
-    Counter(usize),
+    Counter(u64),
     Gauge(f64),
 }
 
@@ -59,7 +59,7 @@ pub struct EventMetric {
     pub timestamp: u64,
     #[serde(flatten)]
     pub header: EventMetricHeader,
-    pub value: f64,
+    pub value: EventMetricValue,
 }
 
 impl EventMetric {
@@ -67,7 +67,7 @@ impl EventMetric {
         timestamp: u64,
         namespace: N,
         name: M,
-        value: f64,
+        value: EventMetricValue,
     ) -> Self {
         Self {
             timestamp,

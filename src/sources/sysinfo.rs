@@ -6,7 +6,7 @@ use tracing::Instrument;
 use crate::components::collector::Collector;
 use crate::components::name::ComponentName;
 use crate::components::output::ComponentWithOutputs;
-use crate::event::metric::EventMetric;
+use crate::event::metric::{EventMetric, EventMetricValue};
 use crate::event::Event;
 
 const NAMESPACE: &str = "host.system";
@@ -129,15 +129,25 @@ impl Source {
 
     fn global_cpu_usage(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.global_cpu_usage();
-        let event = EventMetric::new(instant, NAMESPACE, "global-cpu-usage", value as f64);
+        let event = EventMetric::new(
+            instant,
+            NAMESPACE,
+            "global-cpu-usage",
+            EventMetricValue::Gauge(value as f64),
+        );
         buffer.push_back(event);
     }
 
     fn cpu_usage(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         for cpu in self.system.cpus() {
             let value = cpu.cpu_usage();
-            let event = EventMetric::new(instant, NAMESPACE, "cpu-usage", value as f64)
-                .with_tag("name", cpu.name().to_owned());
+            let event = EventMetric::new(
+                instant,
+                NAMESPACE,
+                "cpu-usage",
+                EventMetricValue::Gauge(value as f64),
+            )
+            .with_tag("name", cpu.name().to_owned());
             buffer.push_back(event);
         }
     }
@@ -145,51 +155,91 @@ impl Source {
     fn cpu_frequency(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         for cpu in self.system.cpus() {
             let value = cpu.frequency();
-            let event = EventMetric::new(instant, NAMESPACE, "cpu-frequency", value as f64)
-                .with_tag("name", cpu.name().to_owned());
+            let event = EventMetric::new(
+                instant,
+                NAMESPACE,
+                "cpu-frequency",
+                EventMetricValue::Gauge(value as f64),
+            )
+            .with_tag("name", cpu.name().to_owned());
             buffer.push_back(event);
         }
     }
 
     fn free_swap(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.free_swap();
-        let event = EventMetric::new(instant, NAMESPACE, "free-swap", value as f64);
+        let event = EventMetric::new(
+            instant,
+            NAMESPACE,
+            "free-swap",
+            EventMetricValue::Gauge(value as f64),
+        );
         buffer.push_back(event);
     }
 
     fn used_swap(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.used_swap();
-        let event = EventMetric::new(instant, NAMESPACE, "used-swap", value as f64);
+        let event = EventMetric::new(
+            instant,
+            NAMESPACE,
+            "used-swap",
+            EventMetricValue::Gauge(value as f64),
+        );
         buffer.push_back(event);
     }
 
     fn total_swap(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.total_swap();
-        let event = EventMetric::new(instant, NAMESPACE, "total-swap", value as f64);
+        let event = EventMetric::new(
+            instant,
+            NAMESPACE,
+            "total-swap",
+            EventMetricValue::Gauge(value as f64),
+        );
         buffer.push_back(event);
     }
 
     fn available_memory(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.available_memory();
-        let event = EventMetric::new(instant, NAMESPACE, "available-memory", value as f64);
+        let event = EventMetric::new(
+            instant,
+            NAMESPACE,
+            "available-memory",
+            EventMetricValue::Gauge(value as f64),
+        );
         buffer.push_back(event);
     }
 
     fn free_memory(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.free_memory();
-        let event = EventMetric::new(instant, NAMESPACE, "free-memory", value as f64);
+        let event = EventMetric::new(
+            instant,
+            NAMESPACE,
+            "free-memory",
+            EventMetricValue::Gauge(value as f64),
+        );
         buffer.push_back(event);
     }
 
     fn used_memory(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.used_memory();
-        let event = EventMetric::new(instant, NAMESPACE, "used-memory", value as f64);
+        let event = EventMetric::new(
+            instant,
+            NAMESPACE,
+            "used-memory",
+            EventMetricValue::Gauge(value as f64),
+        );
         buffer.push_back(event);
     }
 
     fn total_memory(&self, instant: u64, buffer: &mut VecDeque<EventMetric>) {
         let value = self.system.total_memory();
-        let event = EventMetric::new(instant, NAMESPACE, "total-memory", value as f64);
+        let event = EventMetric::new(
+            instant,
+            NAMESPACE,
+            "total-memory",
+            EventMetricValue::Gauge(value as f64),
+        );
         buffer.push_back(event);
     }
 
