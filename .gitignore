@@ -1,3 +1,4 @@
 /target
 example.toml
 .env
+*.db

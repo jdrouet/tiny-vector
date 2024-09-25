@@ -5,6 +5,8 @@ pub mod black_hole;
 pub mod console;
 #[cfg(feature = "sink-datadog-logs")]
 pub mod datadog_logs;
+#[cfg(feature = "sink-sqlite")]
+pub mod sqlite;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
@@ -15,6 +17,9 @@ pub enum BuildError {
     #[cfg(feature = "sink-datadog-logs")]
     #[error(transparent)]
     DatadogLogs(#[from] datadog_logs::BuildError),
+    #[cfg(feature = "sink-sqlite")]
+    #[error(transparent)]
+    Sqlite(#[from] sqlite::BuildError),
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -25,6 +30,8 @@ pub enum Config {
     Console(self::console::Config),
     #[cfg(feature = "sink-datadog-logs")]
     DatadogLogs(self::datadog_logs::Config),
+    #[cfg(feature = "sink-sqlite")]
+    Sqlite(self::sqlite::Config),
 }
 
 impl Config {
@@ -34,6 +41,8 @@ impl Config {
             Self::Console(inner) => Sink::Console(inner.build()?),
             #[cfg(feature = "sink-datadog-logs")]
             Self::DatadogLogs(inner) => Sink::DatadogLogs(inner.build()?),
+            #[cfg(feature = "sink-sqlite")]
+            Self::Sqlite(inner) => Sink::Sqlite(inner.build()?),
         })
     }
 }
@@ -43,6 +52,8 @@ pub enum Sink {
     Console(self::console::Sink),
     #[cfg(feature = "sink-datadog-logs")]
     DatadogLogs(self::datadog_logs::Sink),
+    #[cfg(feature = "sink-sqlite")]
+    Sqlite(self::sqlite::Sink),
 }
 
 impl Sink {
@@ -56,6 +67,8 @@ impl Sink {
             Self::Console(inner) => inner.run(name, receiver).await,
             #[cfg(feature = "sink-datadog-logs")]
             Self::DatadogLogs(inner) => inner.run(name, receiver).await,
+            #[cfg(feature = "sink-sqlite")]
+            Self::Sqlite(inner) => inner.run(name, receiver).await,
         }
     }
 }
