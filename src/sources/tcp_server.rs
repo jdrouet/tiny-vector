@@ -2,7 +2,6 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
-use tracing::Instrument;
 
 use crate::components::collector::Collector;
 use crate::components::output::ComponentWithOutputs;
@@ -91,6 +90,11 @@ impl Source<Stale> {
             state: Stale { address },
         }
     }
+}
+
+impl super::Preparable for Source<Stale> {
+    type Output = Source<Running>;
+    type Error = StartingError;
 
     async fn prepare(self) -> Result<Source<Running>, StartingError> {
         let listener = TcpListener::bind(self.state.address)
@@ -100,17 +104,6 @@ impl Source<Stale> {
         Ok(Source {
             state: Running { listener },
         })
-    }
-
-    pub async fn run(
-        self,
-        span: tracing::Span,
-        collector: Collector,
-    ) -> Result<tokio::task::JoinHandle<()>, StartingError> {
-        let prepared = self.prepare().await?;
-        Ok(tokio::spawn(async move {
-            prepared.execute(collector).instrument(span).await
-        }))
     }
 }
 
@@ -126,7 +119,9 @@ impl Source<Running> {
         });
         Ok(())
     }
+}
 
+impl super::Executable for Source<Running> {
     async fn execute(self, collector: Collector) {
         tracing::info!("waiting for connections");
         loop {
@@ -167,7 +162,7 @@ mod tests {
         let collector = Collector::default().with_output(NamedOutput::Default, tx);
         let source = super::Source::new(address);
 
-        let _handle = source.run(tracing::info_span!("foo"), collector).await;
+        let _handle = crate::sources::run(source, tracing::info_span!("foo"), collector).await;
 
         let mut client = TcpStream::connect(address).await.unwrap();
         let event = crate::event::Event::Log(crate::event::log::EventLog::new("Hello World!"));
@@ -187,7 +182,7 @@ mod tests {
         let collector = Collector::default().with_output(NamedOutput::Default, tx);
         let source = super::Source::new(address);
 
-        let _handle = source.run(tracing::info_span!("foo"), collector).await;
+        let _handle = crate::sources::run(source, tracing::info_span!("foo"), collector).await;
 
         let mut client = TcpStream::connect(address).await.unwrap();
 

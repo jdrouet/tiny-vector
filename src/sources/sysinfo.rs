@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
-use tracing::Instrument;
 
 use crate::components::collector::Collector;
 use crate::components::output::ComponentWithOutputs;
@@ -139,7 +138,10 @@ impl<S> Source<S> {
     }
 }
 
-impl Source<Stale> {
+impl super::Preparable for Source<Stale> {
+    type Output = Source<Running>;
+    type Error = StartingError;
+
     async fn prepare(self) -> Result<Source<Running>, StartingError> {
         Ok(Source {
             state: Running {
@@ -151,16 +153,24 @@ impl Source<Stale> {
             hostname: self.hostname,
         })
     }
+}
 
-    pub async fn run(
-        self,
-        span: tracing::Span,
-        collector: Collector,
-    ) -> Result<tokio::task::JoinHandle<()>, StartingError> {
-        let prepared = self.prepare().await?;
-        Ok(tokio::spawn(async move {
-            prepared.execute(collector).instrument(span).await
-        }))
+impl super::Executable for Source<Running> {
+    async fn execute(mut self, collector: Collector) {
+        tracing::info!("starting");
+        let mut buffer = VecDeque::new();
+        'root: loop {
+            let _ = self.state.timer.tick().await;
+            self.iterate(&mut buffer);
+            while let Some(metric) = buffer.pop_front() {
+                let event = self.augment_metric(metric);
+                if let Err(error) = collector.send_default(event).await {
+                    tracing::error!("unable to send generated log: {error:?}");
+                    break 'root;
+                }
+            }
+        }
+        tracing::info!("stopping");
     }
 }
 
@@ -314,22 +324,5 @@ impl Source<Running> {
             metric.add_tag("hostname", inner.to_owned());
         }
         metric.into()
-    }
-
-    async fn execute(mut self, collector: Collector) {
-        tracing::info!("starting");
-        let mut buffer = VecDeque::new();
-        'root: loop {
-            let _ = self.state.timer.tick().await;
-            self.iterate(&mut buffer);
-            while let Some(metric) = buffer.pop_front() {
-                let event = self.augment_metric(metric);
-                if let Err(error) = collector.send_default(event).await {
-                    tracing::error!("unable to send generated log: {error:?}");
-                    break 'root;
-                }
-            }
-        }
-        tracing::info!("stopping");
     }
 }
