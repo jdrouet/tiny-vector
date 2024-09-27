@@ -43,6 +43,9 @@ impl Config {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum StartingError {}
+
 pub enum Source {
     RandomLogs(self::random_logs::Source),
     #[cfg(feature = "source-sysinfo")]
@@ -52,17 +55,17 @@ pub enum Source {
 }
 
 impl Source {
-    pub async fn run(
+    pub async fn start(
         self,
         name: &ComponentName,
         collector: Collector,
-    ) -> tokio::task::JoinHandle<()> {
-        match self {
+    ) -> Result<tokio::task::JoinHandle<()>, StartingError> {
+        Ok(match self {
             Self::RandomLogs(inner) => inner.run(name, collector).await,
             #[cfg(feature = "source-sysinfo")]
             Self::Sysinfo(inner) => inner.run(name, collector).await,
             #[cfg(feature = "source-tcp-server")]
             Self::TcpServer(inner) => inner.run(name, collector).await,
-        }
+        })
     }
 }

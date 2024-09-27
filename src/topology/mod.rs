@@ -120,6 +120,16 @@ impl Config {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum StartingError {
+    #[error(transparent)]
+    Source(#[from] crate::sources::StartingError),
+    #[error(transparent)]
+    Transform(#[from] crate::transforms::StartingError),
+    #[error(transparent)]
+    Sink(#[from] crate::sinks::StartingError),
+}
+
 #[cfg_attr(test, derive(Default))]
 pub struct Topology {
     sources: HashMap<ComponentName, Source>,
@@ -155,7 +165,7 @@ impl Topology {
         (collectors, receivers)
     }
 
-    pub(crate) async fn run(self) -> Instance {
+    pub(crate) async fn start(self) -> Result<Instance, StartingError> {
         let (mut collectors, mut receivers) = self.prepare_wiring();
 
         let mut sources = HashMap::with_capacity(self.sources.len());
@@ -164,26 +174,26 @@ impl Topology {
 
         for (name, sink) in self.sinks.into_iter() {
             let receiver = receivers.remove(&name).expect("receiver for sink");
-            let handler = sink.inner.run(&name, receiver).await;
+            let handler = sink.inner.start(&name, receiver).await?;
             sinks.insert(name, handler);
         }
         for (name, transform) in self.transforms.into_iter() {
             let receiver = receivers.remove(&name).expect("receiver for transform");
             let collector = collectors.remove(&name).unwrap_or_default();
-            let handler = transform.inner.run(&name, receiver, collector).await;
+            let handler = transform.inner.start(&name, receiver, collector).await?;
             transforms.insert(name, handler);
         }
         for (name, source) in self.sources.into_iter() {
             let collector = collectors.remove(&name).unwrap_or_default();
-            let handler = source.run(&name, collector).await;
+            let handler = source.start(&name, collector).await?;
             sources.insert(name, handler);
         }
 
-        Instance {
+        Ok(Instance {
             sources,
             transforms,
             sinks,
-        }
+        })
     }
 }
 
@@ -214,7 +224,7 @@ mod tests {
     use crate::components::name::ComponentName;
 
     async fn run_config(config: Config) {
-        let _topology = config.build().await.unwrap().run().await;
+        let _topology = config.build().await.unwrap().start().await;
         tokio::time::sleep(tokio::time::Duration::new(1, 0)).await;
         // TODO make sure event came through
     }
