@@ -1,14 +1,11 @@
 use indexmap::IndexMap;
 use tokio::sync::mpsc::error::SendError;
-use tracing::Instrument;
 
 use super::condition::prelude::Evaluate;
 use super::condition::Condition;
 use crate::components::collector::Collector;
-use crate::components::name::ComponentName;
 use crate::components::output::{ComponentWithOutputs, NamedOutput};
 use crate::event::Event;
-use crate::prelude::Receiver;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
@@ -77,39 +74,28 @@ pub struct Transform {
 }
 
 impl Transform {
-    async fn handle(&self, collector: &Collector, event: Event) -> Result<(), SendError<Event>> {
-        for (condition, output) in self.routes.iter() {
-            if condition.evaluate(&event) {
-                return collector.send_named(output, event).await;
-            }
-        }
-        collector.send_named(&self.fallback, event).await
+    pub(crate) fn flavor(&self) -> &'static str {
+        "route"
     }
+}
 
-    async fn execute(self, mut receiver: Receiver, collector: Collector) {
-        tracing::info!("starting");
-        while let Some(event) = receiver.recv().await {
-            if let Err(err) = self.handle(&collector, event).await {
-                tracing::error!("unable to route event: {err:?}");
-                break;
+impl super::Executable for Transform {
+    fn handle(
+        &self,
+        collector: &Collector,
+        event: Event,
+    ) -> impl std::future::Future<Output = Result<(), SendError<Event>>> + Send
+    where
+        Self: Sync,
+    {
+        async {
+            for (condition, output) in self.routes.iter() {
+                if condition.evaluate(&event) {
+                    return collector.send_named(output, event).await;
+                }
             }
+            collector.send_named(&self.fallback, event).await
         }
-        tracing::info!("stopping");
-    }
-
-    pub async fn run(
-        self,
-        name: &ComponentName,
-        receiver: Receiver,
-        collector: Collector,
-    ) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!(
-            "component",
-            name = name.as_ref(),
-            kind = "transform",
-            flavor = "route"
-        );
-        tokio::spawn(async move { self.execute(receiver, collector).instrument(span).await })
     }
 }
 
@@ -125,6 +111,8 @@ mod tests {
 
     #[tokio::test]
     async fn should_route_events_properly() {
+        use crate::transforms::Executable;
+
         let metrics_output = NamedOutput::named("metrics");
         let logs_output = NamedOutput::named("logs");
         let config = super::Config {
@@ -170,6 +158,8 @@ mod tests {
 
     #[tokio::test]
     async fn should_route_to_the_defined_fallback_route() {
+        use crate::transforms::Executable;
+
         let metrics_output = NamedOutput::named("metrics");
         let fallback = NamedOutput::named("fallback");
         let config = super::Config {
@@ -212,6 +202,8 @@ mod tests {
 
     #[tokio::test]
     async fn should_route_to_the_default_fallback_route() {
+        use crate::transforms::Executable;
+
         let metrics_output = NamedOutput::named("metrics");
         let fallback = NamedOutput::named("dropped");
         let config = super::Config {

@@ -1,13 +1,10 @@
 use tokio::sync::mpsc::error::SendError;
-use tracing::Instrument;
 
 use super::condition::prelude::Evaluate;
 use super::condition::Condition;
 use crate::components::collector::Collector;
-use crate::components::name::ComponentName;
 use crate::components::output::{ComponentWithOutputs, NamedOutput};
 use crate::event::Event;
-use crate::prelude::Receiver;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
@@ -62,38 +59,27 @@ pub struct Transform {
 }
 
 impl Transform {
-    async fn handle(&self, collector: &Collector, event: Event) -> Result<(), SendError<Event>> {
-        if self.condition.evaluate(&event) {
-            collector.send_default(event).await
-        } else {
-            collector.send_named(&self.fallback, event).await
-        }
+    pub(crate) fn flavor(&self) -> &'static str {
+        "filter"
     }
+}
 
-    async fn execute(self, mut receiver: Receiver, collector: Collector) {
-        tracing::info!("starting");
-        while let Some(event) = receiver.recv().await {
-            if let Err(err) = self.handle(&collector, event).await {
-                tracing::error!("unable to route event: {err:?}");
-                break;
+impl super::Executable for Transform {
+    fn handle(
+        &self,
+        collector: &Collector,
+        event: Event,
+    ) -> impl std::future::Future<Output = Result<(), SendError<Event>>> + Send
+    where
+        Self: Sync,
+    {
+        async {
+            if self.condition.evaluate(&event) {
+                collector.send_default(event).await
+            } else {
+                collector.send_named(&self.fallback, event).await
             }
         }
-        tracing::info!("stopping");
-    }
-
-    pub async fn run(
-        self,
-        name: &ComponentName,
-        receiver: Receiver,
-        collector: Collector,
-    ) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!(
-            "component",
-            name = name.as_ref(),
-            kind = "transform",
-            flavor = "filter"
-        );
-        tokio::spawn(async move { self.execute(receiver, collector).instrument(span).await })
     }
 }
 
@@ -107,6 +93,8 @@ mod tests {
 
     #[tokio::test]
     async fn should_route_events_properly() {
+        use crate::transforms::Executable;
+
         let default_output = NamedOutput::default();
         let dropped_output = NamedOutput::named("dropped");
         let config = super::Config {
