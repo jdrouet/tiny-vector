@@ -44,18 +44,15 @@ impl Transform {
         } = event_log;
         let mut new_message = None::<String>;
         if let Some(capture) = self.pattern.captures(&message) {
-            for name in self.pattern.capture_names() {
-                if let Some(name) = name {
-                    match capture.name(name) {
-                        Some(value) if name == "message" => {
-                            new_message = Some(value.as_str().to_owned());
-                        }
-                        Some(value) => {
-                            attributes
-                                .insert(name.to_owned().into(), value.as_str().to_owned().into());
-                        }
-                        None => {}
+            for name in self.pattern.capture_names().flatten() {
+                match capture.name(name) {
+                    Some(value) if name == "message" => {
+                        new_message = Some(value.as_str().to_owned());
                     }
+                    Some(value) => {
+                        attributes.insert(name.to_owned().into(), value.as_str().to_owned().into());
+                    }
+                    None => {}
                 }
             }
             EventLog {
