@@ -45,6 +45,9 @@ impl Config {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum StartingError {}
+
 pub enum Transform {
     AddFields(self::add_fields::Transform),
     Filter(self::filter::Transform),
@@ -53,17 +56,17 @@ pub enum Transform {
 }
 
 impl Transform {
-    pub async fn run(
+    pub async fn start(
         self,
         name: &ComponentName,
         receiver: Receiver,
         collector: Collector,
-    ) -> tokio::task::JoinHandle<()> {
-        match self {
+    ) -> Result<tokio::task::JoinHandle<()>, StartingError> {
+        Ok(match self {
             Self::AddFields(inner) => inner.run(name, receiver, collector).await,
             Self::Filter(inner) => inner.run(name, receiver, collector).await,
             Self::RemoveFields(inner) => inner.run(name, receiver, collector).await,
             Self::Route(inner) => inner.run(name, receiver, collector).await,
-        }
+        })
     }
 }

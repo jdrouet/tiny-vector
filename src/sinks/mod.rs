@@ -56,6 +56,9 @@ impl Config {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum StartingError {}
+
 pub enum Sink {
     BlackHole(self::black_hole::Sink),
     Console(self::console::Sink),
@@ -68,12 +71,12 @@ pub enum Sink {
 }
 
 impl Sink {
-    pub async fn run(
+    pub async fn start(
         self,
         name: &ComponentName,
         receiver: Receiver,
-    ) -> tokio::task::JoinHandle<()> {
-        match self {
+    ) -> Result<tokio::task::JoinHandle<()>, StartingError> {
+        Ok(match self {
             Self::BlackHole(inner) => inner.run(name, receiver).await,
             Self::Console(inner) => inner.run(name, receiver).await,
             #[cfg(feature = "sink-datadog-logs")]
@@ -82,6 +85,6 @@ impl Sink {
             Self::File(inner) => inner.run(name, receiver).await,
             #[cfg(feature = "sink-sqlite")]
             Self::Sqlite(inner) => inner.run(name, receiver).await,
-        }
+        })
     }
 }
