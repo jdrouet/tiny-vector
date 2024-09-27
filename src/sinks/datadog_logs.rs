@@ -3,7 +3,6 @@ use std::borrow::Cow;
 use reqwest::StatusCode;
 use tracing::Instrument;
 
-use crate::components::name::ComponentName;
 use crate::prelude::{Receiver, StringOrEnv};
 
 const APPLICATION_JSON: reqwest::header::HeaderValue =
@@ -103,6 +102,12 @@ pub struct Sink {
 }
 
 impl Sink {
+    pub(crate) fn flavor(&self) -> &'static str {
+        "datadog_log"
+    }
+}
+
+impl Sink {
     async fn execute(self, mut receiver: Receiver) {
         tracing::info!("starting");
         let mut buffer = Vec::with_capacity(20);
@@ -123,17 +128,7 @@ impl Sink {
         tracing::info!("stopping");
     }
 
-    pub async fn run(
-        self,
-        name: &ComponentName,
-        receiver: Receiver,
-    ) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!(
-            "component",
-            name = name.as_ref(),
-            kind = "sink",
-            flavor = "datadog_logs"
-        );
+    pub async fn run(self, span: tracing::Span, receiver: Receiver) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move { self.execute(receiver).instrument(span).await })
     }
 }

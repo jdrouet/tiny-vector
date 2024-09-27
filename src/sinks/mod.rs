@@ -10,6 +10,8 @@ pub mod file;
 #[cfg(feature = "sink-sqlite")]
 pub mod sqlite;
 
+const COMPONENT_KIND: &str = "sink";
+
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
     #[error(transparent)]
@@ -71,20 +73,39 @@ pub enum Sink {
 }
 
 impl Sink {
+    fn flavor(&self) -> &'static str {
+        match self {
+            Self::BlackHole(inner) => inner.flavor(),
+            Self::Console(inner) => inner.flavor(),
+            #[cfg(feature = "sink-datadog-logs")]
+            Self::DatadogLogs(inner) => inner.flavor(),
+            #[cfg(feature = "sink-file")]
+            Self::File(inner) => inner.flavor(),
+            #[cfg(feature = "sink-sqlite")]
+            Self::Sqlite(inner) => inner.flavor(),
+        }
+    }
+
     pub async fn start(
         self,
         name: &ComponentName,
         receiver: Receiver,
     ) -> Result<tokio::task::JoinHandle<()>, StartingError> {
+        let span = tracing::info_span!(
+            "component",
+            name = name.as_ref(),
+            kind = COMPONENT_KIND,
+            flavor = self.flavor(),
+        );
         Ok(match self {
-            Self::BlackHole(inner) => inner.run(name, receiver).await,
-            Self::Console(inner) => inner.run(name, receiver).await,
+            Self::BlackHole(inner) => inner.run(span, receiver).await,
+            Self::Console(inner) => inner.run(span, receiver).await,
             #[cfg(feature = "sink-datadog-logs")]
-            Self::DatadogLogs(inner) => inner.run(name, receiver).await,
+            Self::DatadogLogs(inner) => inner.run(span, receiver).await,
             #[cfg(feature = "sink-file")]
-            Self::File(inner) => inner.run(name, receiver).await,
+            Self::File(inner) => inner.run(span, receiver).await,
             #[cfg(feature = "sink-sqlite")]
-            Self::Sqlite(inner) => inner.run(name, receiver).await,
+            Self::Sqlite(inner) => inner.run(span, receiver).await,
         })
     }
 }
