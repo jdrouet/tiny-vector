@@ -1,6 +1,5 @@
 use sqlx::types::Json;
 use sqlx::SqliteConnection;
-use tracing::Instrument;
 
 use crate::event::log::EventLog;
 use crate::event::metric::EventMetric;
@@ -33,8 +32,18 @@ impl Config {
         } else {
             sqlx::sqlite::SqliteConnectOptions::from_str("sqlite::memory:")?
         };
-        Ok(Sink { options })
+        Ok(Sink {
+            state: Stale { options },
+        })
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum StartingError {
+    #[error("unable to connect")]
+    UnableToConnect(#[source] sqlx::Error),
+    #[error("unable to execute migrations")]
+    UnableToMigrate(#[source] sqlx::Error),
 }
 
 async fn migrate(connection: &mut SqliteConnection) -> Result<(), sqlx::Error> {
@@ -80,38 +89,55 @@ async fn persist_event(connection: &mut SqliteConnection, event: Event) -> Resul
     }
 }
 
-pub struct Sink {
+pub(crate) struct Stale {
     options: sqlx::sqlite::SqliteConnectOptions,
 }
 
-impl Sink {
+pub(crate) struct Running {
+    connection: sqlx::sqlite::SqliteConnection,
+}
+
+pub struct Sink<S = Stale> {
+    state: S,
+}
+
+impl<S> Sink<S> {
     pub(crate) fn flavor(&self) -> &'static str {
         "sqlite"
     }
 }
 
-impl Sink {
-    async fn execute(self, mut receiver: Receiver) {
+impl super::Preparable for Sink<Stale> {
+    type Output = Sink<Running>;
+    type Error = StartingError;
+
+    async fn prepare(self) -> Result<Self::Output, Self::Error> {
         use sqlx::ConnectOptions;
 
-        let Ok(mut conn) = self.options.connect().await else {
-            tracing::error!("unable to connect to the database");
-            return;
-        };
-        if let Err(err) = migrate(&mut conn).await {
-            tracing::error!("unable to execute migration: {err:?}");
-            return;
-        }
+        let mut conn = self
+            .state
+            .options
+            .connect()
+            .await
+            .map_err(StartingError::UnableToConnect)?;
+        migrate(&mut conn)
+            .await
+            .map_err(StartingError::UnableToMigrate)?;
+
+        Ok(Sink {
+            state: Running { connection: conn },
+        })
+    }
+}
+
+impl super::Executable for Sink<Running> {
+    async fn execute(mut self, mut receiver: Receiver) {
         tracing::info!("starting");
         while let Some(input) = receiver.recv().await {
-            if let Err(err) = persist_event(&mut conn, input).await {
+            if let Err(err) = persist_event(&mut self.state.connection, input).await {
                 tracing::error!("unable to persist received event: {err:?}");
             }
         }
         tracing::info!("stopping");
-    }
-
-    pub async fn run(self, span: tracing::Span, receiver: Receiver) -> tokio::task::JoinHandle<()> {
-        tokio::spawn(async move { self.execute(receiver).instrument(span).await })
     }
 }

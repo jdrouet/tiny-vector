@@ -1,5 +1,3 @@
-use tracing::Instrument;
-
 use crate::prelude::Receiver;
 
 #[derive(Clone, Debug, Default, serde::Deserialize)]
@@ -21,6 +19,9 @@ impl Config {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum StartingError {}
+
 pub struct Sink;
 
 impl Sink {
@@ -29,16 +30,21 @@ impl Sink {
     }
 }
 
-impl Sink {
+impl super::Preparable for Sink {
+    type Output = Sink;
+    type Error = StartingError;
+
+    async fn prepare(self) -> Result<Self::Output, Self::Error> {
+        Ok(self)
+    }
+}
+
+impl super::Executable for Sink {
     async fn execute(self, mut receiver: Receiver) {
         tracing::info!("starting");
         while let Some(input) = receiver.recv().await {
             drop(input);
         }
         tracing::info!("stopping");
-    }
-
-    pub async fn run(self, span: tracing::Span, receiver: Receiver) -> tokio::task::JoinHandle<()> {
-        tokio::spawn(async move { self.execute(receiver).instrument(span).await })
     }
 }

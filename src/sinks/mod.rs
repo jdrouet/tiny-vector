@@ -59,7 +59,21 @@ impl Config {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum StartingError {}
+pub enum StartingError {
+    #[error(transparent)]
+    BlackHole(#[from] self::black_hole::StartingError),
+    #[error(transparent)]
+    Console(#[from] self::console::StartingError),
+    #[cfg(feature = "sink-datadog-logs")]
+    #[error(transparent)]
+    DatadogLogs(#[from] self::datadog_logs::StartingError),
+    #[cfg(feature = "sink-file")]
+    #[error(transparent)]
+    File(#[from] self::file::StartingError),
+    #[cfg(feature = "sink-sqlite")]
+    #[error(transparent)]
+    Sqlite(#[from] self::sqlite::StartingError),
+}
 
 pub enum Sink {
     BlackHole(self::black_hole::Sink),
@@ -98,14 +112,43 @@ impl Sink {
             flavor = self.flavor(),
         );
         Ok(match self {
-            Self::BlackHole(inner) => inner.run(span, receiver).await,
-            Self::Console(inner) => inner.run(span, receiver).await,
+            Self::BlackHole(inner) => run(inner, span, receiver).await?,
+            Self::Console(inner) => run(inner, span, receiver).await?,
             #[cfg(feature = "sink-datadog-logs")]
-            Self::DatadogLogs(inner) => inner.run(span, receiver).await,
+            Self::DatadogLogs(inner) => run(inner, span, receiver).await?,
             #[cfg(feature = "sink-file")]
-            Self::File(inner) => inner.run(span, receiver).await,
+            Self::File(inner) => run(inner, span, receiver).await?,
             #[cfg(feature = "sink-sqlite")]
-            Self::Sqlite(inner) => inner.run(span, receiver).await,
+            Self::Sqlite(inner) => run(inner, span, receiver).await?,
         })
     }
+}
+
+trait Preparable {
+    type Output: Executable;
+    type Error: Into<StartingError>;
+
+    fn prepare(self)
+        -> impl std::future::Future<Output = Result<Self::Output, Self::Error>> + Send;
+}
+
+trait Executable {
+    fn execute(self, receiver: Receiver) -> impl std::future::Future<Output = ()> + Send;
+}
+
+async fn run<
+    O: Executable + Send + 'static,
+    E: Into<StartingError>,
+    P: Preparable<Output = O, Error = E>,
+>(
+    element: P,
+    span: tracing::Span,
+    receiver: Receiver,
+) -> Result<tokio::task::JoinHandle<()>, StartingError> {
+    use tracing::Instrument;
+
+    let prepared = element.prepare().await.map_err(|err| err.into())?;
+    Ok(tokio::spawn(async move {
+        prepared.execute(receiver).instrument(span).await
+    }))
 }

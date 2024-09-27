@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use tokio::io::AsyncWriteExt;
-use tracing::Instrument;
 
 use crate::event::Event;
 use crate::prelude::Receiver;
@@ -13,7 +12,18 @@ pub struct Config {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum BuildError {
+pub enum BuildError {}
+
+impl Config {
+    pub async fn build(self) -> Result<Sink, BuildError> {
+        Ok(Sink {
+            state: Stale { path: self.path },
+        })
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum StartingError {
     #[error("unable to open file")]
     UnableToOpenFile(
         #[from]
@@ -22,36 +32,42 @@ pub enum BuildError {
     ),
 }
 
-impl Config {
-    pub async fn build(self) -> Result<Sink, BuildError> {
-        let output = tokio::fs::OpenOptions::new()
-            .append(true)
-            .create(true)
-            .write(true)
-            .open(&self.path)
-            .await?;
-        Ok(Sink { output })
-    }
+pub(crate) struct Stale {
+    path: PathBuf,
 }
 
-pub struct Sink {
+pub(crate) struct Running {
     output: tokio::fs::File,
 }
 
-impl Sink {
+pub struct Sink<S = Stale> {
+    state: S,
+}
+
+impl<S> Sink<S> {
     pub(crate) fn flavor(&self) -> &'static str {
         "file"
     }
 }
 
-impl Sink {
-    async fn handle(&mut self, event: Event) -> std::io::Result<()> {
-        let mut encoded = serde_json::to_vec(&event)?;
-        encoded.push(b'\n');
-        self.output.write_all(&encoded).await?;
-        Ok(())
-    }
+impl super::Preparable for Sink<Stale> {
+    type Output = Sink<Running>;
+    type Error = StartingError;
 
+    async fn prepare(self) -> Result<Self::Output, Self::Error> {
+        let output = tokio::fs::OpenOptions::new()
+            .append(true)
+            .create(true)
+            .write(true)
+            .open(&self.state.path)
+            .await?;
+        Ok(Sink {
+            state: Running { output },
+        })
+    }
+}
+
+impl super::Executable for Sink<Running> {
     async fn execute(mut self, mut receiver: Receiver) {
         tracing::info!("starting");
         while let Some(input) = receiver.recv().await {
@@ -61,8 +77,13 @@ impl Sink {
         }
         tracing::info!("stopping");
     }
+}
 
-    pub async fn run(self, span: tracing::Span, receiver: Receiver) -> tokio::task::JoinHandle<()> {
-        tokio::spawn(async move { self.execute(receiver).instrument(span).await })
+impl Sink<Running> {
+    async fn handle(&mut self, event: Event) -> std::io::Result<()> {
+        let mut encoded = serde_json::to_vec(&event)?;
+        encoded.push(b'\n');
+        self.state.output.write_all(&encoded).await?;
+        Ok(())
     }
 }
