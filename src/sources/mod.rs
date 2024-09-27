@@ -88,11 +88,40 @@ impl Source {
             flavor = self.flavor(),
         );
         Ok(match self {
-            Self::RandomLogs(inner) => inner.run(span, collector).await?,
+            Self::RandomLogs(inner) => run(inner, span, collector).await?,
             #[cfg(feature = "source-sysinfo")]
-            Self::Sysinfo(inner) => inner.run(span, collector).await?,
+            Self::Sysinfo(inner) => run(inner, span, collector).await?,
             #[cfg(feature = "source-tcp-server")]
-            Self::TcpServer(inner) => inner.run(span, collector).await?,
+            Self::TcpServer(inner) => run(inner, span, collector).await?,
         })
     }
+}
+
+trait Preparable {
+    type Output: Executable;
+    type Error: Into<StartingError>;
+
+    fn prepare(self)
+        -> impl std::future::Future<Output = Result<Self::Output, Self::Error>> + Send;
+}
+
+trait Executable {
+    fn execute(self, collector: Collector) -> impl std::future::Future<Output = ()> + Send;
+}
+
+async fn run<
+    O: Executable + Send + 'static,
+    E: Into<StartingError>,
+    P: Preparable<Output = O, Error = E>,
+>(
+    element: P,
+    span: tracing::Span,
+    collector: Collector,
+) -> Result<tokio::task::JoinHandle<()>, StartingError> {
+    use tracing::Instrument;
+
+    let prepared = element.prepare().await.map_err(|err| err.into())?;
+    Ok(tokio::spawn(async move {
+        prepared.execute(collector).instrument(span).await
+    }))
 }

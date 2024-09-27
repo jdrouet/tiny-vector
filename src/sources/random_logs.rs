@@ -1,5 +1,3 @@
-use tracing::Instrument;
-
 use crate::components::collector::Collector;
 use crate::components::output::ComponentWithOutputs;
 use crate::event::log::EventLogAttribute;
@@ -63,29 +61,21 @@ impl<S> Source<S> {
     }
 }
 
-impl Source<Stale> {
-    async fn prepare(self) -> Result<Source<Running>, StartingError> {
+impl super::Preparable for Source<Stale> {
+    type Output = Source<Running>;
+    type Error = StartingError;
+
+    async fn prepare(self) -> Result<Self::Output, Self::Error> {
         Ok(Source {
             state: Running {
                 timer: tokio::time::interval(self.state.duration),
             },
         })
     }
-
-    pub async fn run(
-        self,
-        span: tracing::Span,
-        collector: Collector,
-    ) -> Result<tokio::task::JoinHandle<()>, StartingError> {
-        let prepared = self.prepare().await?;
-        Ok(tokio::spawn(async move {
-            prepared.execute(collector).instrument(span).await
-        }))
-    }
 }
 
-impl Source<Running> {
-    pub async fn execute(mut self, collector: Collector) {
+impl super::Executable for Source<Running> {
+    async fn execute(mut self, collector: Collector) {
         tracing::info!("starting");
         loop {
             let _ = self.state.timer.tick().await;
