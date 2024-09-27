@@ -68,87 +68,87 @@ pub enum Condition {
 mod tests {
     use super::*;
     use crate::event::log::EventLog;
-    use crate::event::metric::EventMetric;
+    use crate::event::metric::{EventMetric, EventMetricValue};
     use crate::event::Event;
 
     #[test_case::test_case(
         r#"{"type": "and", "value": [{ "type": "is_log" }, { "type": "is_metric" }]}"#,
         &[],
-        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", 12.34))];
+        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)))];
         "and condition"
     )]
     #[test_case::test_case(
         r#"{"type": "or", "value": [{ "type": "is_log" }, { "type": "is_metric" }]}"#,
-        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", 12.34))],
+        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)))],
         &[];
         "or condition"
     )]
     #[test_case::test_case(
         r#"{"type":"is_log"}"#,
         &[Event::Log(EventLog::new("hello world"))],
-        &[Event::Metric(EventMetric::new(0, "foo", "bar", 12.34))];
+        &[Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)))];
         "is_log condition"
     )]
     #[test_case::test_case(
         r#"{"type":"has_attribute", "name": "foo"}"#,
         &[Event::Log(EventLog::new("hello world").with_attribute("foo", "bar"))],
-        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", 12.34))];
+        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)))];
         "has_attribute condition"
     )]
     #[test_case::test_case(
         r#"{"type":"is_metric"}"#,
-        &[Event::Metric(EventMetric::new(0, "foo", "bar", 12.34))],
+        &[Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)))],
         &[Event::Log(EventLog::new("hello world"))];
         "is_metric condition"
     )]
     #[test_case::test_case(
         r#"{"type":"has_tag", "name": "foo"}"#,
-        &[Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "bar"))],
-        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", 12.34))];
+        &[Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)).with_tag("foo", "bar"))],
+        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)))];
         "has_tag condition"
     )]
     #[test_case::test_case(
         r#"{"type":"has_tag", "name": "foo", "check": { "type": "exists" } }"#,
-        &[Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "bar"))],
-        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", 12.34))];
+        &[Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)).with_tag("foo", "bar"))],
+        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)))];
         "has_tag condition with check exists"
     )]
     #[test_case::test_case(
         r#"{"type":"has_tag", "name": "foo", "check": { "type": "equals", "value": "bar" }}"#,
-        &[Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "bar"))],
-        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", 12.34))];
+        &[Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)).with_tag("foo", "bar"))],
+        &[Event::Log(EventLog::new("hello world")), Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)))];
         "has_tag condition with check equals"
     )]
     #[test_case::test_case(
         r#"{"type":"has_tag", "name": "foo", "check": { "type": "starts_with", "value": "bar" }}"#,
-        &[Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "barzoo"))],
+        &[Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)).with_tag("foo", "barzoo"))],
         &[
             Event::Log(EventLog::new("hello world")),
-            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34)),
-            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "baz")),
+            Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34))),
+            Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)).with_tag("foo", "baz")),
         ];
         "has_tag condition with check starts_with"
     )]
     #[test_case::test_case(
         r#"{"type":"has_tag", "name": "foo", "check": { "type": "ends_with", "value": "bar" }}"#,
-        &[Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "zoobar"))],
+        &[Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)).with_tag("foo", "zoobar"))],
         &[
             Event::Log(EventLog::new("hello world")),
-            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34)),
-            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "zoobaz")),
+            Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34))),
+            Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)).with_tag("foo", "zoobaz")),
         ];
         "has_tag condition with check ends_with"
     )]
     #[test_case::test_case(
         r#"{"type":"has_tag", "name": "foo", "check": { "type": "matches", "regex": "^H[3e]ll[o0]$" }}"#,
         &[
-            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "Hello")),
-            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "H3ll0")),
+            Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)).with_tag("foo", "Hello")),
+            Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)).with_tag("foo", "H3ll0")),
         ],
         &[
             Event::Log(EventLog::new("hello world")),
-            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34)),
-            Event::Metric(EventMetric::new(0, "foo", "bar", 12.34).with_tag("foo", "hell")),
+            Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34))),
+            Event::Metric(EventMetric::new(0, "foo", "bar", EventMetricValue::Gauge(12.34)).with_tag("foo", "hell")),
         ];
         "has_tag condition with check matches"
     )]

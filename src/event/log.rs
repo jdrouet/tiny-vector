@@ -12,6 +12,44 @@ pub enum EventLogAttribute {
     Boolean(bool),
 }
 
+#[cfg(test)]
+impl EventLogAttribute {
+    pub fn as_text(&self) -> Option<&str> {
+        match self {
+            Self::Text(inner) => Some(inner.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_uint(&self) -> Option<u64> {
+        match self {
+            Self::UInteger(inner) => Some(*inner),
+            _ => None,
+        }
+    }
+
+    pub fn as_int(&self) -> Option<i64> {
+        match self {
+            Self::Integer(inner) => Some(*inner),
+            _ => None,
+        }
+    }
+
+    pub fn as_float(&self) -> Option<f64> {
+        match self {
+            Self::Float(inner) => Some(*inner),
+            _ => None,
+        }
+    }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Self::Boolean(inner) => Some(*inner),
+            _ => None,
+        }
+    }
+}
+
 impl From<&'static str> for EventLogAttribute {
     fn from(value: &'static str) -> Self {
         Self::Text(CowStr::Borrowed(value))

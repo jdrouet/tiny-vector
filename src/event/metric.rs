@@ -46,7 +46,7 @@ impl EventMetricHeader {
     }
 }
 
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "kebab-case", tag = "type", content = "value")]
 pub enum EventMetricValue {
     Counter(u64),

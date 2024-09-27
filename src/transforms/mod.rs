@@ -7,6 +7,7 @@ pub mod add_fields;
 pub mod broadcast;
 pub mod condition;
 pub mod filter;
+pub mod regex_parser;
 pub mod remove_fields;
 pub mod route;
 

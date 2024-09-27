@@ -67,6 +67,7 @@ impl Transform {
 mod tests {
     use crate::components::collector::Collector;
     use crate::components::output::NamedOutput;
+    use crate::event::metric::EventMetricValue;
     use crate::prelude::create_channel;
 
     #[tokio::test]
@@ -93,9 +94,14 @@ mod tests {
         transform
             .handle(
                 &collector,
-                crate::event::metric::EventMetric::new(crate::helper::now(), "foo", "bar", 42.0)
-                    .with_tag("hostname", "fake-server")
-                    .into(),
+                crate::event::metric::EventMetric::new(
+                    crate::helper::now(),
+                    "foo",
+                    "bar",
+                    EventMetricValue::Gauge(42.0),
+                )
+                .with_tag("hostname", "fake-server")
+                .into(),
             )
             .await
             .unwrap();

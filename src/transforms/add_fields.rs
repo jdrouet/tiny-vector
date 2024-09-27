@@ -62,6 +62,7 @@ impl Transform {
         }
         tracing::info!("stopping");
     }
+
     pub async fn run(
         self,
         name: &ComponentName,
