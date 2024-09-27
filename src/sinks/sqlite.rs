@@ -115,7 +115,7 @@ impl Sink {
             "component",
             name = name.as_ref(),
             kind = "sink",
-            flavor = "console"
+            flavor = "sqlite"
         );
         tokio::spawn(async move { self.execute(receiver).instrument(span).await })
     }

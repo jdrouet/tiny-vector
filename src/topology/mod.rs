@@ -78,7 +78,7 @@ impl Config {
         toml::de::from_str(&file).map_err(|error| Error::new(ErrorKind::InvalidData, error))
     }
 
-    fn compile(self) -> Result<Topology, BuildError> {
+    async fn compile(self) -> Result<Topology, BuildError> {
         let mut sources = HashMap::with_capacity(self.sources.len());
         let mut transforms = HashMap::with_capacity(self.transforms.len());
         let mut sinks = HashMap::with_capacity(self.sinks.len());
@@ -87,7 +87,7 @@ impl Config {
             sinks.insert(
                 name,
                 WithInputs {
-                    inner: inner.build()?,
+                    inner: inner.build().await?,
                     inputs,
                 },
             );
@@ -114,10 +114,9 @@ impl Config {
         })
     }
 
-    pub fn build(self) -> Result<Topology, BuildError> {
-        self.validate()
-            .map_err(BuildError::Validation)
-            .and_then(|c| c.compile())
+    pub async fn build(self) -> Result<Topology, BuildError> {
+        let c = self.validate().map_err(BuildError::Validation)?;
+        c.compile().await
     }
 }
 
@@ -215,7 +214,7 @@ mod tests {
     use crate::components::name::ComponentName;
 
     async fn run_config(config: Config) {
-        let _topology = config.build().unwrap().run().await;
+        let _topology = config.build().await.unwrap().run().await;
         tokio::time::sleep(tokio::time::Duration::new(1, 0)).await;
         // TODO make sure event came through
     }

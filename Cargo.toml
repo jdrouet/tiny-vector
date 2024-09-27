@@ -6,6 +6,7 @@ edition = "2021"
 [features]
 default = [
     "sink-datadog-logs",
+    "sink-file",
     "sink-sqlite",
     "source-sysinfo",
     "source-tcp-server",
@@ -13,6 +14,7 @@ default = [
 source-sysinfo = ["dep:sysinfo"]
 source-tcp-server = ["tokio/net"]
 sink-datadog-logs = ["dep:reqwest"]
+sink-file = ["tokio/fs"]
 sink-sqlite = ["dep:sqlx", "sqlx/sqlite"]
 
 [dependencies]

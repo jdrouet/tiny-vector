@@ -18,6 +18,6 @@ async fn main() {
     init_tracing();
 
     let config = crate::topology::Config::from_path("./example.toml").unwrap();
-    let topo = config.build().unwrap();
+    let topo = config.build().await.unwrap();
     topo.run().await.wait().await;
 }
