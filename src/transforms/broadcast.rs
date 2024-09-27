@@ -1,11 +1,8 @@
 use tokio::sync::mpsc::error::SendError;
-use tracing::Instrument;
 
 use crate::components::collector::Collector;
-use crate::components::name::ComponentName;
 use crate::components::output::{ComponentWithOutputs, NamedOutput};
 use crate::event::Event;
-use crate::prelude::Receiver;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {}
@@ -31,35 +28,21 @@ impl Config {
 pub struct Transform {}
 
 impl Transform {
-    #[inline]
-    async fn handle(&self, collector: &Collector, event: Event) -> Result<(), SendError<Event>> {
-        collector.send_all(event).await
+    pub(crate) fn flavor(&self) -> &'static str {
+        "broadcast"
     }
+}
 
-    async fn execute(self, mut receiver: Receiver, collector: Collector) {
-        tracing::info!("starting");
-        while let Some(event) = receiver.recv().await {
-            if let Err(err) = self.handle(&collector, event).await {
-                tracing::error!("unable to route event: {err:?}");
-                break;
-            }
-        }
-        tracing::info!("stopping");
-    }
-
-    pub async fn run(
-        self,
-        name: &ComponentName,
-        receiver: Receiver,
-        collector: Collector,
-    ) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!(
-            "component",
-            name = name.as_ref(),
-            kind = "transform",
-            flavor = "broadcast"
-        );
-        tokio::spawn(async move { self.execute(receiver, collector).instrument(span).await })
+impl super::Executable for Transform {
+    fn handle(
+        &self,
+        collector: &Collector,
+        event: Event,
+    ) -> impl std::future::Future<Output = Result<(), SendError<Event>>> + Send
+    where
+        Self: Sync,
+    {
+        async { collector.send_all(event).await }
     }
 }
 
@@ -72,6 +55,8 @@ mod tests {
 
     #[tokio::test]
     async fn should_broadcast_events_properly() {
+        use crate::transforms::Executable;
+
         let metrics_output = NamedOutput::named("metrics");
         let logs_output = NamedOutput::named("logs");
         let config = super::Config::default();
