@@ -4,7 +4,6 @@ use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
 use tracing::Instrument;
 
 use crate::components::collector::Collector;
-use crate::components::name::ComponentName;
 use crate::components::output::ComponentWithOutputs;
 use crate::event::metric::{EventMetric, EventMetricValue};
 use crate::event::Event;
@@ -104,7 +103,9 @@ impl Config {
     pub fn build(self) -> Result<Source, BuildError> {
         let specifics = self.refresh_kind();
         Ok(Source {
-            duration: tokio::time::Duration::from_millis(self.interval.unwrap_or(1000)),
+            state: Stale {
+                duration: tokio::time::Duration::from_millis(self.interval.unwrap_or(1000)),
+            },
             system: System::new_with_specifics(specifics),
             specifics,
             hostname: System::host_name(),
@@ -113,15 +114,57 @@ impl Config {
     }
 }
 
-pub struct Source {
-    config: Config,
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum StartingError {}
+
+pub(crate) struct Stale {
     duration: tokio::time::Duration,
+}
+
+pub(crate) struct Running {
+    timer: tokio::time::Interval,
+}
+
+pub struct Source<S = Stale> {
+    state: S,
+    config: Config,
     system: sysinfo::System,
     specifics: sysinfo::RefreshKind,
     hostname: Option<String>,
 }
 
-impl Source {
+impl<S> Source<S> {
+    pub const fn flavor(&self) -> &'static str {
+        "sysinfo"
+    }
+}
+
+impl Source<Stale> {
+    async fn prepare(self) -> Result<Source<Running>, StartingError> {
+        Ok(Source {
+            state: Running {
+                timer: tokio::time::interval(self.state.duration),
+            },
+            config: self.config,
+            system: self.system,
+            specifics: self.specifics,
+            hostname: self.hostname,
+        })
+    }
+
+    pub async fn run(
+        self,
+        span: tracing::Span,
+        collector: Collector,
+    ) -> Result<tokio::task::JoinHandle<()>, StartingError> {
+        let prepared = self.prepare().await?;
+        Ok(tokio::spawn(async move {
+            prepared.execute(collector).instrument(span).await
+        }))
+    }
+}
+
+impl Source<Running> {
     fn reload(&mut self) {
         tracing::debug!("reloading system");
         self.system.refresh_specifics(self.specifics);
@@ -275,10 +318,9 @@ impl Source {
 
     async fn execute(mut self, collector: Collector) {
         tracing::info!("starting");
-        let mut timer = tokio::time::interval(self.duration);
         let mut buffer = VecDeque::new();
         'root: loop {
-            let _ = timer.tick().await;
+            let _ = self.state.timer.tick().await;
             self.iterate(&mut buffer);
             while let Some(metric) = buffer.pop_front() {
                 let event = self.augment_metric(metric);
@@ -289,19 +331,5 @@ impl Source {
             }
         }
         tracing::info!("stopping");
-    }
-
-    pub async fn run(
-        self,
-        name: &ComponentName,
-        collector: Collector,
-    ) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!(
-            "component",
-            name = name.as_ref(),
-            kind = "source",
-            flavor = "sysinfo"
-        );
-        tokio::spawn(async move { self.execute(collector).instrument(span).await })
     }
 }

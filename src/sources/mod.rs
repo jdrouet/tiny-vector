@@ -8,6 +8,8 @@ pub mod sysinfo;
 #[cfg(feature = "source-tcp-server")]
 pub mod tcp_server;
 
+const COMPONENT_KIND: &str = "source";
+
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
     #[error(transparent)]
@@ -44,7 +46,16 @@ impl Config {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum StartingError {}
+pub enum StartingError {
+    #[error(transparent)]
+    RandomLogs(#[from] self::random_logs::StartingError),
+    #[cfg(feature = "source-sysinfo")]
+    #[error(transparent)]
+    Sysinfo(#[from] self::sysinfo::StartingError),
+    #[cfg(feature = "source-tcp-server")]
+    #[error(transparent)]
+    TcpServer(#[from] self::tcp_server::StartingError),
+}
 
 pub enum Source {
     RandomLogs(self::random_logs::Source),
@@ -55,17 +66,33 @@ pub enum Source {
 }
 
 impl Source {
+    fn flavor(&self) -> &'static str {
+        match self {
+            Self::RandomLogs(inner) => inner.flavor(),
+            #[cfg(feature = "source-sysinfo")]
+            Self::Sysinfo(inner) => inner.flavor(),
+            #[cfg(feature = "source-tcp-server")]
+            Self::TcpServer(inner) => inner.flavor(),
+        }
+    }
+
     pub async fn start(
         self,
         name: &ComponentName,
         collector: Collector,
     ) -> Result<tokio::task::JoinHandle<()>, StartingError> {
+        let span = tracing::info_span!(
+            "component",
+            name = name.as_ref(),
+            kind = COMPONENT_KIND,
+            flavor = self.flavor(),
+        );
         Ok(match self {
-            Self::RandomLogs(inner) => inner.run(name, collector).await,
+            Self::RandomLogs(inner) => inner.run(span, collector).await?,
             #[cfg(feature = "source-sysinfo")]
-            Self::Sysinfo(inner) => inner.run(name, collector).await,
+            Self::Sysinfo(inner) => inner.run(span, collector).await?,
             #[cfg(feature = "source-tcp-server")]
-            Self::TcpServer(inner) => inner.run(name, collector).await,
+            Self::TcpServer(inner) => inner.run(span, collector).await?,
         })
     }
 }

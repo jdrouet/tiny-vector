@@ -5,7 +5,6 @@ use tokio::net::{TcpListener, TcpStream};
 use tracing::Instrument;
 
 use crate::components::collector::Collector;
-use crate::components::name::ComponentName;
 use crate::components::output::ComponentWithOutputs;
 
 #[derive(Debug, thiserror::Error)]
@@ -29,7 +28,9 @@ impl Config {
                 .map_err(BuildError::InvalidAddress)?,
             None => SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 4000)),
         };
-        Ok(Source { address })
+        Ok(Source {
+            state: Stale { address },
+        })
     }
 }
 
@@ -59,18 +60,63 @@ async fn handle_connection(stream: TcpStream, collector: Collector) -> std::io::
     Ok(())
 }
 
-pub struct Source {
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum StartingError {
+    #[error("unable to bind socket")]
+    UnableToBind(#[source] std::io::Error),
+}
+
+pub(crate) struct Stale {
     address: SocketAddr,
 }
 
-impl Source {
+pub(crate) struct Running {
+    listener: TcpListener,
+}
+
+pub struct Source<S = Stale> {
+    state: S,
+}
+
+impl<S> Source<S> {
+    pub const fn flavor(&self) -> &'static str {
+        "tcp_server"
+    }
+}
+
+impl Source<Stale> {
     #[cfg(test)]
     fn new(address: SocketAddr) -> Self {
-        Self { address }
+        Self {
+            state: Stale { address },
+        }
     }
 
-    async fn iterate(&self, listener: &TcpListener, collector: Collector) -> std::io::Result<()> {
-        let (stream, address) = listener.accept().await?;
+    async fn prepare(self) -> Result<Source<Running>, StartingError> {
+        let listener = TcpListener::bind(self.state.address)
+            .await
+            .map_err(StartingError::UnableToBind)?;
+
+        Ok(Source {
+            state: Running { listener },
+        })
+    }
+
+    pub async fn run(
+        self,
+        span: tracing::Span,
+        collector: Collector,
+    ) -> Result<tokio::task::JoinHandle<()>, StartingError> {
+        let prepared = self.prepare().await?;
+        Ok(tokio::spawn(async move {
+            prepared.execute(collector).instrument(span).await
+        }))
+    }
+}
+
+impl Source<Running> {
+    async fn iterate(&self, collector: Collector) -> std::io::Result<()> {
+        let (stream, address) = self.state.listener.accept().await?;
         let span = tracing::info_span!("connection", client = %address);
         tokio::spawn(async move {
             let _entered = span.enter();
@@ -81,29 +127,13 @@ impl Source {
         Ok(())
     }
 
-    async fn execute(self, listener: TcpListener, collector: Collector) {
+    async fn execute(self, collector: Collector) {
         tracing::info!("waiting for connections");
         loop {
-            if let Err(error) = self.iterate(&listener, collector.clone()).await {
+            if let Err(error) = self.iterate(collector.clone()).await {
                 tracing::error!("something went wrong: {error:?}");
             }
         }
-    }
-
-    pub async fn run(
-        self,
-        name: &ComponentName,
-        collector: Collector,
-    ) -> tokio::task::JoinHandle<()> {
-        let listener = TcpListener::bind(self.address).await.unwrap();
-
-        let span = tracing::info_span!(
-            "component",
-            name = name.as_ref(),
-            kind = "source",
-            flavor = "tcp_server"
-        );
-        tokio::spawn(async move { self.execute(listener, collector).instrument(span).await })
     }
 }
 
@@ -116,7 +146,6 @@ mod tests {
     use tokio::net::TcpStream;
 
     use crate::components::collector::Collector;
-    use crate::components::name::ComponentName;
     use crate::components::output::NamedOutput;
 
     async fn wait_for(rx: &crate::prelude::Receiver) {
@@ -138,7 +167,7 @@ mod tests {
         let collector = Collector::default().with_output(NamedOutput::Default, tx);
         let source = super::Source::new(address);
 
-        let _handle = source.run(&ComponentName::new("name"), collector).await;
+        let _handle = source.run(tracing::info_span!("foo"), collector).await;
 
         let mut client = TcpStream::connect(address).await.unwrap();
         let event = crate::event::Event::Log(crate::event::log::EventLog::new("Hello World!"));
@@ -158,7 +187,7 @@ mod tests {
         let collector = Collector::default().with_output(NamedOutput::Default, tx);
         let source = super::Source::new(address);
 
-        let _handle = source.run(&ComponentName::new("name"), collector).await;
+        let _handle = source.run(tracing::info_span!("foo"), collector).await;
 
         let mut client = TcpStream::connect(address).await.unwrap();
 
