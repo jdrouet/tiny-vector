@@ -80,22 +80,20 @@ impl Transform {
 }
 
 impl super::Executable for Transform {
-    fn handle(
+    async fn handle(
         &self,
         collector: &Collector,
         event: Event,
-    ) -> impl std::future::Future<Output = Result<(), SendError<Event>>> + Send
+    ) -> Result<(), SendError<Event>>
     where
         Self: Sync,
     {
-        async {
-            for (condition, output) in self.routes.iter() {
-                if condition.evaluate(&event) {
-                    return collector.send_named(output, event).await;
-                }
+        for (condition, output) in self.routes.iter() {
+            if condition.evaluate(&event) {
+                return collector.send_named(output, event).await;
             }
-            collector.send_named(&self.fallback, event).await
         }
+        collector.send_named(&self.fallback, event).await
     }
 }
 

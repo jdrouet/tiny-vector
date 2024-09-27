@@ -34,16 +34,14 @@ impl Transform {
 }
 
 impl super::Executable for Transform {
-    fn handle(
+    async fn handle(
         &self,
         collector: &Collector,
         event: Event,
-    ) -> impl std::future::Future<Output = Result<(), SendError<Event>>> + Send
+    ) -> Result<(), SendError<Event>>
     where
         Self: Sync,
-    {
-        async { collector.send_all(event).await }
-    }
+    { collector.send_all(event).await }
 }
 
 #[cfg(test)]
