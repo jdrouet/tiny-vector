@@ -1,7 +1,6 @@
 use tracing::Instrument;
 
 use crate::components::collector::Collector;
-use crate::components::name::ComponentName;
 use crate::components::output::ComponentWithOutputs;
 use crate::event::log::EventLogAttribute;
 
@@ -36,21 +35,60 @@ impl ComponentWithOutputs for Config {}
 impl Config {
     pub fn build(self) -> Result<Source, BuildError> {
         Ok(Source {
-            duration: tokio::time::Duration::from_millis(self.interval.unwrap_or(1000)),
+            state: Stale {
+                duration: tokio::time::Duration::from_millis(self.interval.unwrap_or(1000)),
+            },
         })
     }
 }
 
-pub struct Source {
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum StartingError {}
+
+pub(crate) struct Stale {
     duration: tokio::time::Duration,
 }
 
-impl Source {
-    pub async fn execute(self, collector: Collector) {
+pub(crate) struct Running {
+    timer: tokio::time::Interval,
+}
+
+pub struct Source<S = Stale> {
+    state: S,
+}
+
+impl<S> Source<S> {
+    pub const fn flavor(&self) -> &'static str {
+        "random_logs"
+    }
+}
+
+impl Source<Stale> {
+    async fn prepare(self) -> Result<Source<Running>, StartingError> {
+        Ok(Source {
+            state: Running {
+                timer: tokio::time::interval(self.state.duration),
+            },
+        })
+    }
+
+    pub async fn run(
+        self,
+        span: tracing::Span,
+        collector: Collector,
+    ) -> Result<tokio::task::JoinHandle<()>, StartingError> {
+        let prepared = self.prepare().await?;
+        Ok(tokio::spawn(async move {
+            prepared.execute(collector).instrument(span).await
+        }))
+    }
+}
+
+impl Source<Running> {
+    pub async fn execute(mut self, collector: Collector) {
         tracing::info!("starting");
-        let mut timer = tokio::time::interval(self.duration);
         loop {
-            let _ = timer.tick().await;
+            let _ = self.state.timer.tick().await;
             tracing::debug!("generating new random log");
             if let Err(err) = collector.send_default(generate()).await {
                 tracing::error!("unable to send generated log: {err:?}");
@@ -58,19 +96,5 @@ impl Source {
             }
         }
         tracing::info!("stopping");
-    }
-
-    pub async fn run(
-        self,
-        name: &ComponentName,
-        collector: Collector,
-    ) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!(
-            "component",
-            name = name.as_ref(),
-            kind = "source",
-            flavor = "random_logs"
-        );
-        tokio::spawn(async move { self.execute(collector).instrument(span).await })
     }
 }

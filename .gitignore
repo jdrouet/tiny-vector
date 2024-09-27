@@ -2,3 +2,4 @@
 example.toml
 .env
 *.db
+*.jsonp
