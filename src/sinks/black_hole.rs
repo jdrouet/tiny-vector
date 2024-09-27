@@ -1,6 +1,5 @@
 use tracing::Instrument;
 
-use crate::components::name::ComponentName;
 use crate::prelude::Receiver;
 
 #[derive(Clone, Debug, Default, serde::Deserialize)]
@@ -25,6 +24,12 @@ impl Config {
 pub struct Sink;
 
 impl Sink {
+    pub(crate) fn flavor(&self) -> &'static str {
+        "blak_hole"
+    }
+}
+
+impl Sink {
     async fn execute(self, mut receiver: Receiver) {
         tracing::info!("starting");
         while let Some(input) = receiver.recv().await {
@@ -33,17 +38,7 @@ impl Sink {
         tracing::info!("stopping");
     }
 
-    pub async fn run(
-        self,
-        name: &ComponentName,
-        receiver: Receiver,
-    ) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!(
-            "component",
-            name = name.as_ref(),
-            kind = "sink",
-            flavor = "black_hole"
-        );
+    pub async fn run(self, span: tracing::Span, receiver: Receiver) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move { self.execute(receiver).instrument(span).await })
     }
 }

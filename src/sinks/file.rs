@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use tokio::io::AsyncWriteExt;
 use tracing::Instrument;
 
-use crate::components::name::ComponentName;
 use crate::event::Event;
 use crate::prelude::Receiver;
 
@@ -40,6 +39,12 @@ pub struct Sink {
 }
 
 impl Sink {
+    pub(crate) fn flavor(&self) -> &'static str {
+        "file"
+    }
+}
+
+impl Sink {
     async fn handle(&mut self, event: Event) -> std::io::Result<()> {
         let mut encoded = serde_json::to_vec(&event)?;
         encoded.push(b'\n');
@@ -57,17 +62,7 @@ impl Sink {
         tracing::info!("stopping");
     }
 
-    pub async fn run(
-        self,
-        name: &ComponentName,
-        receiver: Receiver,
-    ) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!(
-            "component",
-            name = name.as_ref(),
-            kind = "sink",
-            flavor = "file"
-        );
+    pub async fn run(self, span: tracing::Span, receiver: Receiver) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move { self.execute(receiver).instrument(span).await })
     }
 }

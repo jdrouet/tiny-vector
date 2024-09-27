@@ -2,7 +2,6 @@ use sqlx::types::Json;
 use sqlx::SqliteConnection;
 use tracing::Instrument;
 
-use crate::components::name::ComponentName;
 use crate::event::log::EventLog;
 use crate::event::metric::EventMetric;
 use crate::event::Event;
@@ -86,6 +85,12 @@ pub struct Sink {
 }
 
 impl Sink {
+    pub(crate) fn flavor(&self) -> &'static str {
+        "sqlite"
+    }
+}
+
+impl Sink {
     async fn execute(self, mut receiver: Receiver) {
         use sqlx::ConnectOptions;
 
@@ -106,17 +111,7 @@ impl Sink {
         tracing::info!("stopping");
     }
 
-    pub async fn run(
-        self,
-        name: &ComponentName,
-        receiver: Receiver,
-    ) -> tokio::task::JoinHandle<()> {
-        let span = tracing::info_span!(
-            "component",
-            name = name.as_ref(),
-            kind = "sink",
-            flavor = "sqlite"
-        );
+    pub async fn run(self, span: tracing::Span, receiver: Receiver) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move { self.execute(receiver).instrument(span).await })
     }
 }
