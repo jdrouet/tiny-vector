@@ -8,6 +8,16 @@ pub struct EventMetricName {
     pub name: CowStr,
 }
 
+impl std::fmt::Display for EventMetricName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.namespace.len() > 0 {
+            write!(f, "{}.{}", self.namespace, self.name)
+        } else {
+            f.write_str(self.name.as_ref())
+        }
+    }
+}
+
 impl EventMetricName {
     pub fn new<N: Into<CowStr>, M: Into<CowStr>>(namespace: N, name: M) -> Self {
         Self {

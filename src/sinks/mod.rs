@@ -7,6 +7,8 @@ pub mod console;
 pub mod datadog_logs;
 #[cfg(feature = "sink-file")]
 pub mod file;
+#[cfg(feature = "sink-prometheus-exporter")]
+pub mod prometheus_exporter;
 #[cfg(feature = "sink-sqlite")]
 pub mod sqlite;
 
@@ -24,6 +26,9 @@ pub enum BuildError {
     #[cfg(feature = "sink-file")]
     #[error(transparent)]
     File(#[from] file::BuildError),
+    #[cfg(feature = "sink-prometheus-exporter")]
+    #[error(transparent)]
+    PrometheusExporter(#[from] prometheus_exporter::BuildError),
     #[cfg(feature = "sink-sqlite")]
     #[error(transparent)]
     Sqlite(#[from] sqlite::BuildError),
@@ -39,6 +44,8 @@ pub enum Config {
     DatadogLogs(self::datadog_logs::Config),
     #[cfg(feature = "sink-file")]
     File(self::file::Config),
+    #[cfg(feature = "sink-prometheus-exporter")]
+    PrometheusExporter(prometheus_exporter::Config),
     #[cfg(feature = "sink-sqlite")]
     Sqlite(self::sqlite::Config),
 }
@@ -52,6 +59,8 @@ impl Config {
             Self::DatadogLogs(inner) => Sink::DatadogLogs(inner.build()?),
             #[cfg(feature = "sink-file")]
             Self::File(inner) => Sink::File(inner.build().await?),
+            #[cfg(feature = "sink-prometheus-exporter")]
+            Self::PrometheusExporter(inner) => Sink::PrometheusExporter(inner.build()?),
             #[cfg(feature = "sink-sqlite")]
             Self::Sqlite(inner) => Sink::Sqlite(inner.build()?),
         })
@@ -70,6 +79,9 @@ pub enum StartingError {
     #[cfg(feature = "sink-file")]
     #[error(transparent)]
     File(#[from] self::file::StartingError),
+    #[cfg(feature = "sink-prometheus-exporter")]
+    #[error(transparent)]
+    PrometheusExporter(#[from] self::prometheus_exporter::StartingError),
     #[cfg(feature = "sink-sqlite")]
     #[error(transparent)]
     Sqlite(#[from] self::sqlite::StartingError),
@@ -82,6 +94,8 @@ pub enum Sink {
     DatadogLogs(self::datadog_logs::Sink),
     #[cfg(feature = "sink-file")]
     File(self::file::Sink),
+    #[cfg(feature = "sink-prometheus-exporter")]
+    PrometheusExporter(self::prometheus_exporter::Sink),
     #[cfg(feature = "sink-sqlite")]
     Sqlite(self::sqlite::Sink),
 }
@@ -95,6 +109,8 @@ impl Sink {
             Self::DatadogLogs(inner) => inner.flavor(),
             #[cfg(feature = "sink-file")]
             Self::File(inner) => inner.flavor(),
+            #[cfg(feature = "sink-prometheus-exporter")]
+            Self::PrometheusExporter(inner) => inner.flavor(),
             #[cfg(feature = "sink-sqlite")]
             Self::Sqlite(inner) => inner.flavor(),
         }
@@ -118,6 +134,8 @@ impl Sink {
             Self::DatadogLogs(inner) => run(inner, span, receiver).await?,
             #[cfg(feature = "sink-file")]
             Self::File(inner) => run(inner, span, receiver).await?,
+            #[cfg(feature = "sink-prometheus-exporter")]
+            Self::PrometheusExporter(inner) => run(inner, span, receiver).await?,
             #[cfg(feature = "sink-sqlite")]
             Self::Sqlite(inner) => run(inner, span, receiver).await?,
         })
