@@ -80,11 +80,7 @@ impl Transform {
 }
 
 impl super::Executable for Transform {
-    async fn handle(
-        &self,
-        collector: &Collector,
-        event: Event,
-    ) -> Result<(), SendError<Event>>
+    async fn handle(&self, collector: &Collector, event: Event) -> Result<(), SendError<Event>>
     where
         Self: Sync,
     {
