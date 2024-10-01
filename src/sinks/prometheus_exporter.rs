@@ -82,7 +82,7 @@ impl super::Preparable for Sink<Stale> {
             .map_err(StartingError::UnableToBuildRecorder)?;
 
         let exporter = tokio::spawn(async move {
-            if let Err(_) = exporter.await {
+            if exporter.await.is_err() {
                 tracing::error!("exporter failed");
             }
         });

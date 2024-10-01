@@ -166,9 +166,9 @@ mod tests {
 
         let mut client = TcpStream::connect(address).await.unwrap();
         let event = crate::event::Event::Log(crate::event::log::EventLog::new("Hello World!"));
-        let event_bytes = serde_json::to_vec(&event).unwrap();
-        client.write(&event_bytes).await.unwrap();
-        client.write("\n".as_bytes()).await.unwrap();
+        let mut event_bytes = serde_json::to_vec(&event).unwrap();
+        event_bytes.push(b'\n');
+        client.write_all(&event_bytes).await.unwrap();
 
         wait_for(&rx).await;
     }
@@ -188,19 +188,19 @@ mod tests {
 
         let event = crate::event::Event::Log(crate::event::log::EventLog::new("Hello World!"));
         let event_bytes = serde_json::to_vec(&event).unwrap();
-        client.write(&event_bytes).await.unwrap();
-        client.write("\n".as_bytes()).await.unwrap();
+        client.write_all(&event_bytes).await.unwrap();
+        client.write_all("\n".as_bytes()).await.unwrap();
 
         client
-            .write("this is not an event".as_bytes())
+            .write_all("this is not an event".as_bytes())
             .await
             .unwrap();
-        client.write("\n".as_bytes()).await.unwrap();
+        client.write_all("\n".as_bytes()).await.unwrap();
 
         let event = crate::event::Event::Log(crate::event::log::EventLog::new("Hello World!"));
         let event_bytes = serde_json::to_vec(&event).unwrap();
-        client.write(&event_bytes).await.unwrap();
-        client.write("\n".as_bytes()).await.unwrap();
+        client.write_all(&event_bytes).await.unwrap();
+        client.write_all("\n".as_bytes()).await.unwrap();
 
         wait_for(&rx).await;
 
