@@ -48,7 +48,7 @@ sysinfo = { version = "0.31", features = [
     "system",
 ], default-features = false, optional = true }
 thiserror = "1.0"
-tokio = { version = "1.39", features = [
+tokio = { version = "1.43", features = [
     "io-util",
     "macros",
     "rt-multi-thread",
